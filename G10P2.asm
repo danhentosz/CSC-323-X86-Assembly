@@ -1,11 +1,11 @@
 TITLE R.P.N. Calculator                       (G10P2.asm).
-COMMENT !                                                .
-.Created By:                                             .
-.														                             .
-.       		  - Daniel Hentosz (HEN3883@calu.edu)        .
-.														                             .
-.             - Scott Trunzo   (TRU1931@calu.edu)        .
-.														                             .
+COMMENT !                                                
+.Created By:                                             
+.														                             
+.             - Daniel Hentosz (HEN3883@calu.edu)        
+.														                             
+.             - Scott Trunzo   (TRU1931@calu.edu)        
+.														                             
 .Last Revised: Feburary 24th, 2021.           (2/24/2021).
 .Written for Assembly Language Programming  (CSC-323-R01).
 
