@@ -1,19 +1,84 @@
 TITLE R.P.N. Calculator                       (G10P2.asm).
-COMMENT !                                                
-.Created By:                                             
-.														                             
-.             - Daniel Hentosz (HEN3883@calu.edu)        
-.														                             
-.             - Scott Trunzo   (TRU1931@calu.edu)        
-.														                             
-.Last Revised: Feburary 24th, 2021.           (2/24/2021).
+COMMENT !                                                .
+.Created By:                                             .
+.							 .
+.             - Scott Trunzo   (TRU1931@calu.edu)        .
+.					                 .
+.     		  - Daniel Hentosz (HEN3883@calu.edu)    .
+.		        				 .
+.Last Revised: March 4th, 2021.                (3/4/2021).
 .Written for Assembly Language Programming  (CSC-323-R01).
+Description:
+
+Uses R.P.N. notation to quickly preform basic arithmetic:
+
+ - this notation is preformed onto an 8 entry stack,
+
+ - notation includes the following symbol cateogries:
+
+   + " "   (SPACE, TAB)
+     - ignored when taking user input.
+	 - EX "   + ENTER" acts exactly like "+ ENTER".
+  
+   + "0-9" (DIGIT)
+     - pushes a number into the stack,
+	   + can be positive or negative (see "-"),
+	 - EX "10 ENTER" adds 10d to the stack.
+   
+   + "+"   (ADD)
+     - adds the first two entries on the stack together,
+	 - EX "+" {stack: 10, 12}, the stack becomes {stack: 22}.
+
+   + "-"*  (SUBTRACT & NEGATIVE*)
+     - subtracts the first two entries on the stack from eachother,
+	 - *if encountered before a digit that digit becomes negative, 
+	 - EX "- ENTER" {stack: 10, 12}, the stack becomes {stack: -2}.
+
+   + "*"   (MULTIPLY)
+     - multiplies the first two entries on the stack together,
+	 - EX "* ENTER" {stack: 10, 12}, the stack becomes {stack: 120}.
+
+   + "/"   (DIVIDE)
+     - divides the second entry on the stack by the first,
+	 - EX "/ ENTER" {stack: 2, 4}, the stack becomes {stack: 2}.
+
+   + "X"   (E(X)CHANGE)
+     - swaps the first two values on the stack with eachother,
+	 - EX "X ENTER" {stack: 2, 4}, the stack becomes {stack: 4, 2}.
+
+   + "N"   ((N)EGATE)
+     - swaps the sign for the first entry in the stack,
+	 - EX "N ENTER" {stack: 2, 4}, the stack becomes {stack: -2, 4}.	
+	
+   + "V"   ((V)IEW)
+     - displays the entire stack,
+	 - EX "V ENTER" {stack: 2, 4}, prints +2 +4.
+
+   + "C"   ((C)LEAR)
+     - empties the entire stack,
+	 - EX "C ENTER" {stack: 2, 4}, the stack is emptied.
 
 
+   + "U"   (ROLL (U)P)
+     - shifts all values on the stack UP by one,
+	 - EX "U ENTER" {stack: 2, 4, 8}, the stack becomes {stack: 4, 8, 2}.
+		
+   + "D"   (ROLL (D)OWN)
+     - shifts all values on the stack DOWN by one,
+	 - EX "U ENTER" {stack: 2, 4, 8}, the stack becomes {stack: 8, 2, 4}.
 
-
-
+   + "Q"   ((Q)UIT)
+     - terminates the program.
+   
+   + After one of these character(s)* is found,
+    - no other commands may be entered on that line (ignored),
+	* excludes SPACE and TAB (see above).
+	- EX "+ 1 ENTER" is equivalent to "+ ENTER".
+   
+   + Other forms of input will be ignored (BAD DATA).
 !
+
+
 .386
 
 .MODEL flat, stdcall
@@ -29,14 +94,15 @@ INCLUDE irvine32.inc
 .DATA
 
 
-;// Template Strings (Pointer represents input line).
-;str_line    byte "|----------------------------------------------------------", 0
-;str_blank   byte "| ", 0
-;str_pointer byte "> ", 0
 
 choice sbyte 20 dup(? )
-len byte ?
+len      byte ?
+len_temp byte ?
+
+exp dword 1d
+exp_len byte ?
 num sdword ?
+num_negative byte ?
 bigmsg byte "Enter a number greater than -1,000,000,000", 0dh, 0ah, 0
 badmsg byte "Invalid Data", 0dh, 0ah, 0
 temp sdword ?
@@ -54,70 +120,75 @@ fmsg byte "Stack Full", 0dh, 0ah, 0
 
 main PROC
 
-
-
 	;//The main loop
-	start:
+	Start:
 	
-		;// Moves choice to 
+
 		mov edx, offset choice
 		mov ecx, 20
+		mov ebx, 0
+		
+		mov num, ebx
+		mov num_negative, bl
 		
 		;// Reads input from the user.
 		call readstring
-		
+
+		mov ecx, 0
+
 		;// Copies the length from al to <len> for reuse.
 		mov len, al
-		
-
-		
-		;//does the string star with '-'
-		cmp byte ptr[choice], '-'
-		je negitive
-		
-		;//We know its a positive number or operation
-		mov al, byte ptr[choice]
-		
-		;//Is it a number
-		call isdigit
-		jnz op
-		
-		mov esi, offset[choice]
-		movzx ecx, len
-
-
-
-	;//Convering each char to a number using out BITWISE operation and
-	L2:
-		and byte ptr[esi], 00001111b
-		inc esi
-		loop L2
-		mov esi, offset choice
-		inc len
-		movzx ecx, len
-		call negnumcalc
-		;//Is the stack full
-		mov bl, count
-		cmp bl, 8
-		jae full
-		;//Push the positive number on the stack
-		inc count
-		push eax
-		jmp start
-
-
-	full:
-		;//If the stack is full
-		mov edx,offset fmsg
+		mov esi, offset [choice]
+		mov cl, 0
+		mov al, byte ptr[esi]
+		jmp LMainStart
+	
+	BadData:
+		;//if it makes it here, its bad data
+		mov edx, offset badmsg
 		call writestring
-		jmp start
+		jmp Start
+	
+	LMainStart:
 
 
-	op:
+		jmp Main
+	
+	
+	LMainComp:
+		cmp cl, len
+		jge Done
+		inc cl
+		mov al, byte ptr[esi + ecx]
+		jmp LMain
+	
+	
+	LMain:
+		cmp al, 0
+		; Send this to a bad Data Label
+		je BadData
+		
+		cmp al, ' '
+		je LMainComp
+		
+		cmp al, '	'
+		je LMainComp
+
+		cmp al, 57
+		jge Operators
+		
+		cmp al, 48
+		jge LDigitsStartPositive
+		
+		cmp al, '-'
+		je  DashHandler
+		
+		jmp BadData
+	
+	Operators:
 		;//We know its an operation
 		movzx ecx, count
-		mov al, byte ptr[choice]
-		
+
 		cmp al, '+'
 		je ad
 		
@@ -127,47 +198,107 @@ main PROC
 		cmp al, '/'
 		je divi
 		
+		and al, 11011111b
+		
 		cmp al, 'X'
-		je ex
-		cmp al, 'x'
 		je ex
 		
 		cmp al, 'N'
 		je negate
-		cmp al, 'n'
-		je negate
 		
 		cmp al, 'V'
 		je view
-		cmp al, 'v'
-		je view
-		
+
 		cmp al, 'C'
 		je clear
-		cmp al, 'c'
-		je clear
-		
+	
 		cmp al, 'Q'
 		je quit
-		cmp al, 'q'
-		je quit
-		
+
 		cmp al, 'U'
 		je up
-		cmp al, 'u'
-		je up
-		
+
 		cmp al, 'D'
 		je down
-		cmp al, 'd'
-		je down
 		
-		;//if it makes it here, its bad data
-		mov edx, offset badmsg
-		call writestring
-		jmp start
+		jmp BadData
+		
+		
+	
+	LDigitsStartPositive:
+		mov exp_len, cl
+		mov ch, exp_len
+		jmp LDigits
+
+	LDigitsStartNegative:
+		mov exp_len, cl
+		
+		mov cl, num_negative
+		inc cl
+		mov num_negative, cl
+		
+		mov cl, exp_len
+		mov ch, exp_len
+		jmp LDigits
+	
+	LDigitsComp:
+		cmp cl, len
+		jge LDigitsDone
+		
+		inc cl
+		mov al, byte ptr[esi + ecx]
+		
+		cmp al, 57
+		jge LDigitsDone
+		cmp al, 48
+		jle LDigitsDone
+		
+		jmp LDigits
+		
+	
+	LDigits:
+		; Transforms al into a decimal value.
+		and al, 00001111b
+		
+		cmp cl, ch
+		je LDigitsLower
 
 
+		LDigitsPlace:
+			imul ebx, ebx, 10
+			inc ch
+			cmp ch, cl
+			jle LDigitsPlace
+		
+		LDigitsLower:
+			movzx eax, al
+			imul ebx, eax
+			add num, ebx
+			jmp LDigitsComp
+	
+	LDigitsDone:
+		cmp num_negative, 0
+		je LDigitsDoneLower
+		
+		neg num
+		LDigitsDoneLower:
+			push num
+			jmp Start
+	
+	
+	DashHandler:
+		cmp cl, len
+		jge su
+		
+		inc ecx
+		mov al, byte ptr[esi + ecx]
+		
+		cmp al, 57
+		jge su
+		cmp al, 48
+		jge LDigitsStartNegative
+		jmp su
+		
 	ad:
 		;//Add procedure
 		cmp ecx,1
@@ -319,40 +450,40 @@ main PROC
 		jmp start
 
 
-	negitive:
+	;negitive:
 		;//If its a negitive number
-		mov al, byte ptr[choice + 1]
-		call isdigit
-		jnz su
-		mov esi, offset[choice + 1]
-		movzx ecx, len
-		dec ecx
+		;mov al, byte ptr[choice + 1]
+		;call isdigit
+		;jnz su
+		;mov esi, offset[choice + 1]
+		;movzx ecx, len
+		;dec ecx
 		;//Converting each byte to a number using our BITWISE operation and
 		;//We then negate each bit
 
 
-	L1 :
-		and byte ptr[esi], 00001111b
-		neg byte ptr[esi]
-		inc esi
-		loop L1
+	;L1 :
+		;and byte ptr[esi], 00001111b
+		;neg byte ptr[esi]
+		;inc esi
+		;loop L1
 		
 		
 		;//Calculating the number(concatinating all the numbers)
-		mov esi, offset[choice + 1]
-		movzx ecx, len
-		call negnumcalc
+		;mov esi, offset[choice + 1]
+		;movzx ecx, len
+		;call negnumcalc
 		;//If the number is within the valid range
-		cmp status, -1
-		je start
-		mov status, 1
-		mov bl,count
-		cmp bl,8
-		jae full
-		mov eax, num
-		push eax
-		inc count
-		jmp start
+		;cmp status, -1
+		;je start
+		;mov status, 1
+		;mov bl,count
+		;cmp bl,8
+		;jae full
+		;mov eax, num
+		;push eax
+		;inc count
+		;jmp start
 
 
 	su:
@@ -944,48 +1075,48 @@ rolldownstack PROC
 
 
 	five :
-			mov eax, dword ptr[esp + 20]
-			xchg eax, dword ptr[esp + 4]
-			xchg eax, dword ptr[esp + 8]
-			xchg eax, dword ptr[esp + 12]
-			xchg eax, dword ptr[esp + 16]
-			mov dword ptr[esp + 20], eax
-			jmp done
+		mov eax, dword ptr[esp + 20]
+		xchg eax, dword ptr[esp + 4]
+		xchg eax, dword ptr[esp + 8]
+		xchg eax, dword ptr[esp + 12]
+		xchg eax, dword ptr[esp + 16]
+		mov dword ptr[esp + 20], eax
+		jmp done
 
 
 	six :
-			mov eax, dword  ptr[esp + 24]
-			xchg eax, dword ptr[esp + 4]
-			xchg eax, dword ptr[esp + 8]
-			xchg eax, dword ptr[esp + 12]
-			xchg eax, dword ptr[esp + 16]
-			xchg eax, dword ptr[esp + 20]
-			mov dword ptr[esp + 24], eax
-			jmp done
+		mov eax, dword  ptr[esp + 24]
+		xchg eax, dword ptr[esp + 4]
+		xchg eax, dword ptr[esp + 8]
+		xchg eax, dword ptr[esp + 12]
+		xchg eax, dword ptr[esp + 16]
+		xchg eax, dword ptr[esp + 20]
+		mov dword ptr[esp + 24], eax
+		jmp done
 
 
 	seven :
-			mov eax, dword ptr[esp + 28]
-			xchg eax, dword ptr[esp + 4]
-			xchg eax, dword ptr[esp + 8]
-			xchg eax, dword ptr[esp + 12]
-			xchg eax, dword ptr[esp + 16]
-			xchg eax, dword ptr[esp + 20]
-			xchg eax, dword ptr[esp + 24]
-			mov dword ptr[esp + 28], eax
-			jmp done
+		mov eax, dword ptr[esp + 28]
+		xchg eax, dword ptr[esp + 4]
+		xchg eax, dword ptr[esp + 8]
+		xchg eax, dword ptr[esp + 12]
+		xchg eax, dword ptr[esp + 16]
+		xchg eax, dword ptr[esp + 20]
+		xchg eax, dword ptr[esp + 24]
+		mov dword ptr[esp + 28], eax
+		jmp done
 
 
 	eight :
-			mov eax, dword ptr[esp + 32]
-			xchg eax, dword ptr[esp + 4]
-			xchg eax, dword ptr[esp + 8]
-			xchg eax, dword ptr[esp + 12]
-			xchg eax, dword ptr[esp + 16]
-			xchg eax, dword ptr[esp + 20]
-			xchg eax, dword ptr[esp + 24]
-			xchg eax, dword ptr[esp + 28]
-			mov dword ptr[esp + 32], eax
+		mov eax, dword ptr[esp + 32]
+		xchg eax, dword ptr[esp + 4]
+		xchg eax, dword ptr[esp + 8]
+		xchg eax, dword ptr[esp + 12]
+		xchg eax, dword ptr[esp + 16]
+		xchg eax, dword ptr[esp + 20]
+		xchg eax, dword ptr[esp + 24]
+		xchg eax, dword ptr[esp + 28]
+		mov dword ptr[esp + 32], eax
 
 
 	done :
