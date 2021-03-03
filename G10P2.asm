@@ -1,12 +1,10 @@
 TITLE R.P.N. Calculator                       (G10P2.asm).
 COMMENT !                                                .
 .Created By:                                             .
-.							 .
+.             - Daniel Hentosz (HEN3883@calu.edu)        .
 .             - Scott Trunzo   (TRU1931@calu.edu)        .
-.					                 .
-.     		  - Daniel Hentosz (HEN3883@calu.edu)    .
-.		        				 .
-.Last Revised: March 4th, 2021.                (3/4/2021).
+.			                                 .
+.Last Revised: March 3rd, 2021.                (3/3/2021).
 .Written for Assembly Language Programming  (CSC-323-R01).
 Description:
 
@@ -95,13 +93,13 @@ INCLUDE irvine32.inc
 
 
 
-choice sbyte 20 dup(? )
+choice   sbyte 20 dup(? )
 len      byte ?
 len_temp byte ?
 
-exp dword 1d
-exp_len byte ?
-num sdword ?
+exp      dword 1d
+exp_len  byte ?
+num      sdword ?
 num_negative byte ?
 bigmsg byte "Enter a number greater than -1,000,000,000", 0dh, 0ah, 0
 badmsg byte "Invalid Data", 0dh, 0ah, 0
@@ -120,105 +118,131 @@ fmsg byte "Stack Full", 0dh, 0ah, 0
 
 main PROC
 
-	;//The main loop
+	; The program's starting point.
+	; Serves as a break from the main loop that asks for user input.
 	Start:
 	
-
+		; Prepares registers for calling readstring (see below).
 		mov edx, offset choice
 		mov ecx, 20
+		
+		; Zeroes [ebx], which is used to reset value(s) below.
 		mov ebx, 0
 		
+		; Resets <num> and <num_negative>.
 		mov num, ebx
 		mov num_negative, bl
 		
-		;// Reads input from the user.
+		; Reads input from the user.
 		call readstring
 
+		; Zeroes [ecx], since choice-length no longer needs to be stored there.
 		mov ecx, 0
 
-		;// Copies the length from al to <len> for reuse.
+		; Copies the length from [al] to <len> for reuse.
 		mov len, al
+		
+		; Assigns a pointer value to [esi].		
 		mov esi, offset [choice]
-		mov cl, 0
-		mov al, byte ptr[esi]
+		
+		; Moves (with zeroes extended) the value [esi] points to.
+		; This value is always written by readstring, even if input is blank.
+		movzx eax, byte ptr[esi]
+		
+		; Jumps to LMainStart.
 		jmp LMainStart
 	
+	
+	;Landing pad for any bad data in the program. 
 	BadData:
-		;//if it makes it here, its bad data
+		; Moves (and prints) a prompt, informing the user that their data was invalid.
 		mov edx, offset badmsg
 		call writestring
+		
+		; Jumps back to the Start label.
 		jmp Start
 	
+	; Serves as a bridge between Start and Main
 	LMainStart:
 
-
-		jmp Main
-	
-	
-	LMainComp:
-		cmp cl, len
-		jge Done
-		inc cl
-		mov al, byte ptr[esi + ecx]
+		; Jumps to Main.
 		jmp LMain
 	
 	
+	LMainComp:
+		; Compares [cx] to the recorded <len>.
+		; if [cx] is larger, then the data entered above was bad.
+		cmp cl, len
+		jge BadData
+		
+		; otherwise, increments [c].
+		inc cx
+		; make CL the same size as esi for this (probably move it to a temp, then copy with zeroes to ecx)
+		movzx eax, byte ptr[esi + ecx]
+		jmp LMain
+	
+	; Compares the value stored in [eax] against various datatypes.
 	LMain:
-		cmp al, 0
-		; Send this to a bad Data Label
+	
+		; Checks to see if the value stored in [eax] is NULL (end of a string).
+		; If it is, program jumps to BadData.
+		cmp eax, 0
 		je BadData
 		
-		cmp al, ' '
+		; Checks to see if the value stored in [eax] is a space.
+		; Iterates past that whitespace, if so (jumps to LMainComp).
+		cmp eax, ' '
 		je LMainComp
 		
-		cmp al, '	'
+		; Checks to see if the value stored in [eax] is a space.
+		; Iterates past that whitespace, if so (jumps to LMainComp).
+		cmp eax, '	'
 		je LMainComp
 
-		cmp al, 57
+		cmp eax, '-'
+		je  DashHandler
+
+		cmp eax, 57
 		jge Operators
 		
-		cmp al, 48
+		cmp eax, 48
 		jge LDigitsStartPositive
 		
-		cmp al, '-'
-		je  DashHandler
-		
+
 		jmp BadData
 	
 	Operators:
-		;//We know its an operation
-		movzx ecx, count
 
-		cmp al, '+'
+		cmp eax, '+'
 		je ad
 		
-		cmp al, '*'
+		cmp eax, '*'
 		je mu
 		
-		cmp al, '/'
+		cmp eax, '/'
 		je divi
 		
 		and al, 11011111b
 		
-		cmp al, 'X'
+		cmp eax, 'X'
 		je ex
 		
-		cmp al, 'N'
+		cmp eax, 'N'
 		je negate
 		
-		cmp al, 'V'
+		cmp eax, 'V'
 		je view
 
-		cmp al, 'C'
+		cmp eax, 'C'
 		je clear
 	
-		cmp al, 'Q'
+		cmp eax, 'Q'
 		je quit
 
-		cmp al, 'U'
+		cmp eax, 'U'
 		je up
 
-		cmp al, 'D'
+		cmp eax, 'D'
 		je down
 		
 		jmp BadData
@@ -227,7 +251,6 @@ main PROC
 	
 	LDigitsStartPositive:
 		mov exp_len, cl
-		mov ch, exp_len
 		jmp LDigits
 
 	LDigitsStartNegative:
@@ -238,19 +261,19 @@ main PROC
 		mov num_negative, cl
 		
 		mov cl, exp_len
-		mov ch, exp_len
+		
 		jmp LDigits
 	
 	LDigitsComp:
 		cmp cl, len
 		jge LDigitsDone
 		
-		inc cl
-		mov al, byte ptr[esi + ecx]
-		
-		cmp al, 57
+		inc cx
+		movzx eax, byte ptr[esi + ecx]
+
+		cmp eax, 57
 		jge LDigitsDone
-		cmp al, 48
+		cmp eax, 48
 		jle LDigitsDone
 		
 		jmp LDigits
@@ -260,46 +283,37 @@ main PROC
 		; Transforms al into a decimal value.
 		and al, 00001111b
 		
-		cmp cl, ch
+		cmp cl, exp_len
 		je LDigitsLower
-
-
-		LDigitsPlace:
-			imul ebx, ebx, 10
-			inc ch
-			cmp ch, cl
-			jle LDigitsPlace
-		
+		imul ebx, ebx, 10
 		LDigitsLower:
-			movzx eax, al
-			imul ebx, eax
-			add num, ebx
+			add ebx, eax
 			jmp LDigitsComp
 	
 	LDigitsDone:
 		cmp num_negative, 0
 		je LDigitsDoneLower
-		
-		neg num
+		neg ebx
 		LDigitsDoneLower:
-			push num
-			jmp Start
+			push ebx
+			jmp Done
 	
 	
 	DashHandler:
 		cmp cl, len
 		jge su
 		
-		inc ecx
-		mov al, byte ptr[esi + ecx]
+		inc cx
+		movzx eax, byte ptr[esi + ecx]
 		
-		cmp al, 57
+		cmp eax, 57
 		jge su
-		cmp al, 48
+		cmp eax, 48
 		jge LDigitsStartNegative
 		jmp su
 		
 	ad:
+		movzx ecx, count
 		;//Add procedure
 		cmp ecx,1
 		je toosmall
@@ -309,6 +323,7 @@ main PROC
 
 
 	mu:
+		movzx ecx, count
 		;//Multiply procedure
 		movzx ecx, count
 		cmp ecx, 1
@@ -319,6 +334,7 @@ main PROC
 
 
 	divi:
+		movzx ecx, count
 		;//Divide procedure
 		movzx ecx, count
 		cmp ecx, 1
@@ -329,6 +345,7 @@ main PROC
 
 
 	ex:
+		movzx ecx, count
 		;//The rest of the procedures do not take an element off the stack, therefore we do not need to check the stack size
 		mov al, count
 		cmp al, 1
@@ -345,7 +362,7 @@ main PROC
 
 
 	clear:
-		
+		movzx ecx, count	
 		;//Seeing how many elements are on the stack so we can add the apprpiate number to ESP
 		call crlf
 		movzx ecx, count
@@ -451,6 +468,7 @@ main PROC
 
 
 	;negitive:
+		;movzx ecx, count
 		;//If its a negitive number
 		;mov al, byte ptr[choice + 1]
 		;call isdigit
@@ -487,13 +505,16 @@ main PROC
 
 
 	su:
+		movzx ecx, count
 		;//Subtraction procedure
 		cmp count,1
 		jbe toosmall
 		call subtoptwo
 		push eax
 		jmp done
-		done : ;//If they did an operation
+		
+		
+		done:
 		call crlf
 		call writeint
 		call crlf
