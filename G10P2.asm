@@ -77,6 +77,7 @@ Uses R.P.N. notation to quickly preform basic arithmetic:
 !
 
 
+
 .386
 
 .MODEL flat, stdcall
@@ -101,12 +102,12 @@ exp      dword 1d
 exp_len  byte ?
 num      sdword ?
 num_negative byte ?
-bigmsg byte "Enter a number greater than -1,000,000,000", 0dh, 0ah, 0
-badmsg byte "Invalid Data", 0dh, 0ah, 0
+bigmsg byte "Entered a number with more places than -/+ 1,000,000,000 (entry ignored).", 0dh, 0ah, 0
+badmsg byte "Invalid Data. Please enter another value.", 0dh, 0ah, 0
 temp sdword ?
 count byte 0
 status sbyte 1
-smallmsg byte "Not enugh element in the stack", 0dh, 0ah, 0
+smallmsg byte "Not enough elements in the stack", 0dh, 0ah, 0
 fmsg byte "Stack Full", 0dh, 0ah, 0
 
 
@@ -202,25 +203,26 @@ main PROC
 		cmp eax, '-'
 		je  DashHandler
 
-		cmp eax, 57
-		jge Operators
-		
-		cmp eax, 48
-		jge LDigitsStartPositive
-		
-
-		jmp BadData
-	
-	Operators:
-
 		cmp eax, '+'
 		je ad
 		
 		cmp eax, '*'
 		je mu
-		
+
 		cmp eax, '/'
 		je divi
+
+		cmp eax, 58
+		jge Operators
+		
+		cmp eax, 57
+		jle LDigitsStartPositive
+		
+
+		
+		jmp BadData
+	
+	Operators:
 		
 		and al, 11011111b
 		
@@ -250,39 +252,46 @@ main PROC
 		
 	
 	LDigitsStartPositive:
+		cmp count, 8
+		jge full
 		mov exp_len, cl
 		jmp LDigits
 
 	LDigitsStartNegative:
+		cmp count, 8
+		jge full
 		mov exp_len, cl
-		
 		mov cl, num_negative
 		inc cl
 		mov num_negative, cl
-		
 		mov cl, exp_len
-		
 		jmp LDigits
 	
 	LDigitsComp:
 		cmp cl, len
 		jge LDigitsDone
-		
-		inc cx
+		sub cl, exp_len
+		cmp cl, 10
+		jge LDigitsOverflow
+		add cl, exp_len
+
+		inc cl
 		movzx eax, byte ptr[esi + ecx]
 
-		cmp eax, 57
+		cmp eax, 58
 		jge LDigitsDone
-		cmp eax, 48
+		cmp eax, 47
 		jle LDigitsDone
-		
 		jmp LDigits
-		
+	
+	LDigitsOverflow:
+		mov edx, offset bigmsg
+		call writestring
+		jmp Start
 	
 	LDigits:
 		; Transforms al into a decimal value.
 		and al, 00001111b
-		
 		cmp cl, exp_len
 		je LDigitsLower
 		imul ebx, ebx, 10
@@ -295,7 +304,12 @@ main PROC
 		je LDigitsDoneLower
 		neg ebx
 		LDigitsDoneLower:
+			mov al, count
+			inc al
+			mov count, al
+			call WriteInt
 			push ebx
+			mov eax, ebx
 			jmp Done
 	
 	
@@ -319,50 +333,47 @@ main PROC
 		je toosmall
 		call addtoptwo
 		push eax
-		jmp done
+		jmp doneOperator
 
 
 	mu:
-		movzx ecx, count
 		;//Multiply procedure
 		movzx ecx, count
 		cmp ecx, 1
 		jbe toosmall
 		call multoptwo
 		push eax
-		jmp done
+		jmp doneOperator
 
 
 	divi:
-		movzx ecx, count
 		;//Divide procedure
 		movzx ecx, count
 		cmp ecx, 1
 		jbe toosmall
 		call divtoptwo
 		push eax
-		jmp done
+		jmp doneOperator
 
 
 	ex:
-		movzx ecx, count
 		;//The rest of the procedures do not take an element off the stack, therefore we do not need to check the stack size
 		mov al, count
 		cmp al, 1
-		je toosmall
+		jbe toosmall
 		call xchgtoptwo
 		jmp done
 		negate:
 		call negatetop
 		jmp done
-		view:
+	
+	view:
 		;//View Procedure
 		call viewstack
 		jmp start
 
 
 	clear:
-		movzx ecx, count	
 		;//Seeing how many elements are on the stack so we can add the apprpiate number to ESP
 		call crlf
 		movzx ecx, count
@@ -467,349 +478,37 @@ main PROC
 		jmp start
 
 
-	;negitive:
-		;movzx ecx, count
-		;//If its a negitive number
-		;mov al, byte ptr[choice + 1]
-		;call isdigit
-		;jnz su
-		;mov esi, offset[choice + 1]
-		;movzx ecx, len
-		;dec ecx
-		;//Converting each byte to a number using our BITWISE operation and
-		;//We then negate each bit
-
-
-	;L1 :
-		;and byte ptr[esi], 00001111b
-		;neg byte ptr[esi]
-		;inc esi
-		;loop L1
-		
-		
-		;//Calculating the number(concatinating all the numbers)
-		;mov esi, offset[choice + 1]
-		;movzx ecx, len
-		;call negnumcalc
-		;//If the number is within the valid range
-		;cmp status, -1
-		;je start
-		;mov status, 1
-		;mov bl,count
-		;cmp bl,8
-		;jae full
-		;mov eax, num
-		;push eax
-		;inc count
-		;jmp start
-
-
 	su:
 		movzx ecx, count
 		;//Subtraction procedure
-		cmp count,1
+		cmp ecx, 1
 		jbe toosmall
 		call subtoptwo
 		push eax
-		jmp done
+		jmp doneOperator
 		
 		
 		done:
 		call crlf
 		call writeint
 		call crlf
-		dec count
 		jmp start
+
+	doneOperator:
+		dec count
+		jmp done
 	
+	full:
+		;//If the stack is full
+		mov edx,offset fmsg
+		call writestring
+		jmp Start
+
+
 	done2:;//To exit
 		exit
 		
 main ENDP
-
-
-
-;//_______________________________
-;//RECIVES: The string offset in ESI and the string length in ECX
-;//RETURNES: The number is EAX
-;//REQUIRES: A string of type byte
-;//_______________________________
-negnumcalc PROC
-
-	cmp ecx, 2
-	je oneneg
-
-	cmp ecx, 3
-	je twoneg
-
-	cmp ecx, 4
-	je threeneg
-
-	cmp ecx, 5
-	je fourneg
-
-	cmp ecx, 6
-	je fiveneg
-
-	cmp ecx, 7
-	je sevenneg
-
-	cmp ecx, 8
-	je eightneg
-
-	cmp ecx, 9
-	je nineneg
-
-	cmp ecx, 10
-	je tenneg
-
-	mov status, -1
-	mov edx, offset bigmsg
-	call writestring
-	jmp doneneg
-
-
-	oneneg :
-		movsx eax, byte ptr[esi]
-		mov num, eax
-		jmp doneneg
-
-
-	twoneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 10
-		mul ebx
-		movsx ebx, byte ptr[esi + 1]
-		add eax, ebx
-		mov num, eax
-		jmp doneneg
-
-
-	threeneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 100
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		add num, eax
-		jmp doneneg
-
-
-	fourneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 1000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		add num, eax
-		jmp doneneg
-
-
-	fiveneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 10000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		add num, eax
-		jmp doneneg
-
-
-	sevenneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 100000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 10000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 5]
-		add num, eax
-		jmp doneneg
-
-
-	eightneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 1000000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 100000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 10000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 5]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 6]
-		add num, eax
-		jmp doneneg
-
-
-	nineneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 10000000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 1000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 100000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 10000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 5]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 6]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 7]
-		add num, eax
-		jmp doneneg
-
-
-	tenneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 100000000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 10000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 1000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 100000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		mov ebx, 10000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 5]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 6]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 7]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 8]
-		add num, eax
-		jmp doneneg
-
-
-	elevenneg :
-		movsx eax, byte ptr[esi]
-		mov ebx, 1000000000
-		mul ebx
-		mov num, eax
-		movsx eax, byte ptr[esi + 1]
-		mov ebx, 100000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 2]
-		mov ebx, 10000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 3]
-		mov ebx, 1000000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 4]
-		mov ebx, 100000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 5]
-		mov ebx, 10000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 6]
-		mov ebx, 1000
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 7]
-		mov ebx, 100
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 8]
-		mov ebx, 10
-		mul ebx
-		add num, eax
-		movsx eax, byte ptr[esi + 9]
-		add num, eax
-		jmp doneneg
-
-	doneneg:
-		ret
-negnumcalc ENDP
 
 
 
