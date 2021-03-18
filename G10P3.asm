@@ -11,7 +11,7 @@
 ;//RUN jobname HOLD jobname KILL jobname STEP n
 ;//CHNAGE jobname priority
 ;//LOAD jobname priority run_time.....LOAD job1 50 (can be 1-50..this really just sets a jobs priority, run time, and places it in the hold mode)
-TITLE
+TITLE G10P3
 .386
 .model flat, stdcall
 .stack 4096
@@ -32,15 +32,44 @@ holdc byte "HOLD", 0
 killc byte "KILL", 0
 stepc byte "STEP", 0
 changec byte "CHANGE", 0
-loadc byte "LOAD",0
-hmsg byte "Enter a command: QUIT, HELP, SHOW, RUN, HOLD, KILL, STEP, CHNAGE, or LOAD.",0dh,0ah,0
-showmsg byte "SHOW!!!!",0dh,0ah,0
-runmsg byte "LETS RUN!!!!",0dh,0ah,0
-holdmsg byte "AYY, ITS IN THE HOLD PROCEDURE!!",0dh,0ah,0
-killmsg byte "Kill!!!",0dh,0ah,0
+loadc byte "LOAD", 0
+hmsg byte "Enter a command: QUIT, HELP, SHOW, RUN, HOLD, KILL, STEP, CHNAGE, or LOAD.", 0dh, 0ah, 0
+showmsg byte "SHOW!!!!", 0dh, 0ah, 0
+runmsg byte "LETS RUN!!!!", 0dh, 0ah, 0
+holdmsg byte "AYY, ITS IN THE HOLD PROCEDURE!!", 0dh, 0ah, 0
+killmsg byte "Kill!!!", 0dh, 0ah, 0
 stepmsg byte "STEPING!!", 0dh, 0ah, 0
 changemsg byte "CHANGING", 0dh, 0ah, 0
 loadmsg byte "LOADING", 0dh, 0ah, 0
+;// name = 8 bytes
+;// priority = 1 byte
+;// status = 1 byte(hold or RUN)WHY DO WE JUST NEED 1 byte HERE ? ? ?
+;// run_time = 2 bytes(1 - 50. we are using a word so we have an even number of bytes taken up per job)
+;// start_time = 2 bytes(The time can be much bigger than 256 when the job is loaded)
+;//Constant for the field offsets in the record:
+jName equ 0
+jPriority equ 8
+jStatus equ 9
+jRunTime equ 10
+jLoadTime equ 12
+;//Constants for the status values:
+jobAvailable equ 0
+jobRun equ 1
+jobHold equ 2
+;//Constant for the lowest priority:
+lowestPriority equ 7
+;//Constant for the size of the job record:
+sizeOfJob equ 14
+;//Constant for the number of jobs:
+numberOfJobs equ 10
+jobs byte numberOfJobs * sizeOfJob dup(jobAvailable)
+;//Holds the location of the end of the jobs:
+endOfJobs dword endOfJobs
+priority byte ?
+rtime word ?
+systime word 0
+;//A pointer to poin tto the current job record
+jobPTR dword ?
 .code
 main PROC
 start:
