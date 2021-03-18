@@ -43,7 +43,7 @@ Command | Operand 1 | Operand 2 | Operand 3
    * __CHANGE__ _jobname priority_
        * Updates a jobs priority. Must be a value 0-7.
    * __LOAD__ *jobname priority run_time*
-       * Creates a job and places it in the **HOLD** _status_, if there is space/room. Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
+       * Creates a job and places it in the job_queue. The job must be a valid unique name, and there must be enugh size(less than 10 jobs in the job_queue). The jon starts in the **HOLD** _status_. Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
 
 
 :shit: :shit: :shit: :sparkles: :sparkles: :sparkles: :full_moon: :full_moon: :full_moon:
