@@ -12,9 +12,9 @@ ____________________________________________________________
 ## Commands:
 Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
 --------|-----------|-----------|-----------|----------
- **QUIT
+ __QUIT
  HELP
- SHOW**
+ SHOW__
 **RUN** | *jobname*
 **HOLD** | *jobname*
 **KILL** | *jobname*
