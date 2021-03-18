@@ -32,6 +32,7 @@ Command | Operand 1 | Operand 2 | Operand 3
     * Provides help with the program.
  * __SHOW__
      * Shows the job queue.
+     * Provides the *name, priority, run_time, load_time,* and *status*
   * __RUN__ _jobname_
      * Changes the *status* of a job from **HOLD** to **RUN**
   * __HOLD__ _jobname_
