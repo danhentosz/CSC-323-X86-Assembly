@@ -4,6 +4,7 @@
 **Daniel Hentosz, Scott Trunzo || GROUP 10**
 __hen3883@calu.edu, tru1931@calu.edu__
 
+*Item 1
 Accepts: QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE
 ;//10 jobs at a time. Each job has: name(up to 8 chars in length and unique), priority, status, run ;//time, start time
 ;//Each job starats in the HOLD mode, when a job is done, its removed from the queue
