@@ -31,14 +31,18 @@ Command | Operand 1 | Operand 2 | Operand 3
     * Provides help with the program.
  * __SHOW__
      * Shows the job queue.
-  * __RUN__ _jobe_
+  * __RUN__ _jobname_
      * Changes the mode of a job from **HOLD** to **RUN**
-  * __HOLD__ _name_
+  * __HOLD__ _jobname_
       * Changes the mode of a jo from **HOLD** to **RUN**
-   * __KILL__ _name_
+   * __KILL__ _jobname_
        * Removes the job from the job queue. The job must be in the **HOLD** mose.
    * __STEP__ _n_
       * Processes n cycles of the simulation stepping the system clock. If n is ommited then one is used as the default value. n must be a positive number.
-   * __LOAD__ *name priority run_time*
+   * __CHANGE__ _jobname priority_
+       * Updates a jobs priority. Must be a value 0-7.
+   * __LOAD__ *jobname priority run_time*
        * Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
+
+
 :shit: :shit: :shit: :sparkles: :sparkles: :sparkles: :full_moon: :full_moon: :full_moon:
