@@ -36,7 +36,7 @@ Command | Operand 1 | Operand 2 | Operand 3
   * __HOLD__ _jobname_
       * Changes the mode of a job from **HOLD** to **RUN**
    * __KILL__ _jobname_
-       * Removes the job from the job queue. The job must be in the **HOLD** mose.
+       * Removes the job from the job queue. The job must be in the **HOLD** mode.
    * __STEP__ _n_
       * Processes n cycles of the simulation stepping the system clock. If n is ommited then one is used as the default value. n must be a positive number.
    * __CHANGE__ _jobname priority_
