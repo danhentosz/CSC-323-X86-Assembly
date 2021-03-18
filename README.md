@@ -1,7 +1,7 @@
 # Multitasking Operating System Simulator
 
 
-**Daniel Hentosz, Scott Trunzo || GROUP 10
+**Daniel Hentosz, Scott Trunzo || GROUP 10**
 ;//hen3883@calu.edu, tru1931@calu.edu
 ;//Accepts: QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE
 ;//10 jobs at a time. Each job has: name(up to 8 chars in length and unique), priority, status, run ;//time, start time
