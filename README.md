@@ -19,5 +19,5 @@ Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
 **HOLD** | *jobname*
 **KILL** | *jobname*
 **STEP** | *n*
-**CHNAGE** | *jobname | priority*
+**CHANGE** | *jobname | priority*
 **LOAD** | *jobname | priority | run_time*
