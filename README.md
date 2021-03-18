@@ -34,7 +34,7 @@ Command | Operand 1 | Operand 2 | Operand 3
   * __RUN__ _jobname_
      * Changes the mode of a job from **HOLD** to **RUN**
   * __HOLD__ _jobname_
-      * Changes the mode of a jo from **HOLD** to **RUN**
+      * Changes the mode of a job from **HOLD** to **RUN**
    * __KILL__ _jobname_
        * Removes the job from the job queue. The job must be in the **HOLD** mose.
    * __STEP__ _n_
