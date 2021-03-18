@@ -2,7 +2,8 @@
 
 
 **Daniel Hentosz, Scott Trunzo || GROUP 10**
-__hen3883@calu.edu, tru1931@calu.edu__
+
+**hen3883@calu.edu, tru1931@calu.edu**
 
   * __Accepts:__ *QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE*.
   * __10 jobs at a time__.
