@@ -9,8 +9,8 @@ __hen3883@calu.edu, tru1931@calu.edu__
   * Each job starts in the **HOLD** mode, when a job is done, its removed from the queue
   * When a jobs *time, status*, or *priority* changes, a message of the jobs name and an explination is printed to the screen with the system time of the event
 ## Commands:
-Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
---------|-----------|-----------|-----------|----------
+Command | Operand 1 | Operand 2 | Operand 3
+--------|-----------|-----------|-----------
  __QUIT__
  __HELP__
  __SHOW__
