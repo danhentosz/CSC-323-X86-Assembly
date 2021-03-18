@@ -46,5 +46,17 @@ Command | Operand 1 | Operand 2 | Operand 3
    * __LOAD__ *jobname priority run_time*
        * Creates a job and places it in the job_queue. The job must be a valid unique name, and there must be enugh size(less than 10 jobs in the job_queue). The jon starts in the **HOLD** _status_. Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
 
+### Record Structure:
+**FIELD** | **OFFSET**
+-|-
+__NAME__ | 0
+__PRIORITY__ | 8
+__STATUS__ | 9
+__RUN_TIME__ | 10
+__LOAD_TIME__ | 12
+
+ * Each record is 14 bytes.
+ * All records use 140 BYTES(14 *10)
+
 
 :shit: :shit: :shit: :sparkles: :sparkles: :sparkles: :full_moon: :full_moon: :full_moon:
