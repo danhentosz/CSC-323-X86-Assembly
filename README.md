@@ -10,8 +10,11 @@ __hen3883@calu.edu, tru1931@calu.edu__
   * When a jobs time, status, or priority changes, a message of the jobs name and an explination is ;//printed to the screen with the system time of the event
 ____________________________________________________________
 ## Commands:
- * **No Parameters:**
- ** **QUIT, HELP, SHOW**
+Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
+--------|--------|--------|--------|--------|
+ **QUIT
+ HELP
+ SHOW**
 RUN* jobname *HOLD* jobname KILL jobname STEP n
 CHNAGE jobname priority
 LOAD jobname priority run_time.....LOAD job1 50 (can be 1-50..this really just sets a jobs priority, ;//run time, and places it in the hold mode)
