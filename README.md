@@ -9,7 +9,7 @@ __hen3883@calu.edu, tru1931@calu.edu__
   * Each job starats in the HOLD mode, when a job is done, its removed from the queue
   * When a jobs time, status, or priority changes, a message of the jobs name and an explination is ;//printed to the screen with the system time of the event
 ____________________________________________________________
-**Commands:**
+## Commands:
  * **No Parameters:**
  ** **QUIT, HELP, SHOW**
 RUN* jobname *HOLD* jobname KILL jobname STEP n
