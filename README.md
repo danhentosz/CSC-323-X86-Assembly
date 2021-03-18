@@ -15,6 +15,9 @@ Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
  **QUIT
  HELP
  SHOW**
-RUN* jobname *HOLD* jobname KILL jobname STEP n
-CHNAGE jobname priority
-LOAD jobname priority run_time.....LOAD job1 50 (can be 1-50..this really just sets a jobs priority, ;//run time, and places it in the hold mode)
+**RUN** | *jobname*
+**HOLD** | *jobname*
+**KILL** | *jobname*
+**STEP** | *n*
+**CHNAGE** | *jobname | priority*
+**LOAD** | *jobname | priority | run_time*
