@@ -18,6 +18,6 @@ Command | Operand 1 | Operand 2 | Operand 3 | Operand 4
 **RUN** | *jobname*
 **HOLD** | *jobname*
 **KILL** | *jobname*
-**STEP** | *n*
-**CHANGE** | *jobname | priority*
-**LOAD** | *jobname | priority | run_time*
+**STEP** | _n_
+**CHANGE** | _jobname_ | _priority_
+**LOAD** | _jobname_ | _priority_ | _run_time_
