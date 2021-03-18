@@ -2,8 +2,9 @@
 
 
 **Daniel Hentosz, Scott Trunzo || GROUP 10**
-;//hen3883@calu.edu, tru1931@calu.edu
-;//Accepts: QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE
+__hen3883@calu.edu, tru1931@calu.edu__
+
+Accepts: QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE
 ;//10 jobs at a time. Each job has: name(up to 8 chars in length and unique), priority, status, run ;//time, start time
 ;//Each job starats in the HOLD mode, when a job is done, its removed from the queue
 ;//When a jobs time, status, or priority changes, a message of the jobs name and an explination is ;//printed to the screen with the system time of the event
