@@ -58,5 +58,7 @@ __LOAD_TIME__ | 12 | jLoadTime
  * Each record is 14 bytes.
  * All records use 140 BYTES(14 *10)
 
+ * Make use of CMPSD CMPSW CMPSB, REP REPE REPNE, MOVSD MOVSW MOVSB
+
 
 :shit: :shit: :shit: :sparkles: :sparkles: :sparkles: :full_moon: :full_moon: :full_moon:
