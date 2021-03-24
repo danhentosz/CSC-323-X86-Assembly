@@ -44,19 +44,20 @@ Command | Operand 1 | Operand 2 | Operand 3
    * __CHANGE__ _jobname priority_
        * Updates a jobs priority. Must be a value 0-7.
    * __LOAD__ *jobname priority run_time*
-       * Creates a job and places it in the job_queue. The job must be a valid unique name, and there must be enugh size(less than 10 jobs in the job_queue). The jon starts in the **HOLD** _status_. Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
+       * Creates a job and places it in the job_queue. The job must be a valid unique name, and there must be enugh size(less than 10 jobs in the job_queue). The job starts in the **HOLD** _status_. Priority is 0-7 with 0 being the highest. *run_time* is the ammount of steps the job will take before its compleated, 1-50.
 
 ### Record Structure:
 **FIELD** | **OFFSET** | **OFFSET CONSTANT**
 -|-|-
 __NAME__ | 0 | jName
-__PRIORITY__ | 8 | jPriority
-__STATUS__ | 9 | jStatus
-__RUN_TIME__ | 10 | jRunTime
+__PRIORITY__ | 9 | jPriority
+__STATUS__ | 10 | jStatus
+__RUN_TIME__ | 11 | jRunTime
 __LOAD_TIME__ | 12 | jLoadTime
 
  * Each record is 14 bytes.
  * All records use 140 BYTES(14 *10)
+ * The status holds an integer(0, 1, or 2), with 0 representing avalible, 1 representing __RUN__, and 2 representing ___HOLD__
 
  * Make use of CMPSD CMPSW CMPSB, REP REPE REPNE, MOVSD MOVSW MOVSB
 
