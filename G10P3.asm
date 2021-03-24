@@ -7,7 +7,7 @@ INCLUDE irvine32.inc
 input byte 48 dup(? )
 spot dword ?
 command byte 8 dup(? )
-op1 byte 10 dup(? )
+op1 byte 10 dup(? ) 
 op2 sbyte -1
 op3 byte ?
 ;//___________________
@@ -17,6 +17,9 @@ msg3 byte "Priority: ", 0
 msg4 byte "Run Time: ", 0
 .code
 main PROC
+mov eax,black+(gray*16)
+call settextcolor
+call clrscr
 beginit:
 mov edx, offset input
 mov ecx, 48
@@ -212,8 +215,132 @@ mov edi, offset command
 mov ecx, 5
 repe cmpsb
 jz showjobs
+
+cld
+mov esi, offset runstr
+mov edi, offset command
+mov ecx, 4
+repe cmpsb
+jz run
+
+cld
+mov esi, offset holdstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz hold
 ret
 compare ENDP
+
+hold PROC
+call skipchars
+call rem
+call getop1
+
+mov al, namelen
+cmp al, 0
+je nameprompt
+cmp al, 9
+jae nameprompt
+jmp keepgoing
+nameprompt :
+mov namelen, 0
+cld
+mov edi, offset op1
+mov esi, offset empty
+mov ecx, 10
+rep movsb
+call getnewname
+mov al, namelen
+cmp al, 0
+jbe done
+cmp al, 9
+jae done
+keepgoing :
+call findjob
+mov al, jobnamenum
+cmp al, 0
+je done
+mov edx, offset foundrun
+call writestring
+mov edi, jobnamepos
+add edi, 10
+mov byte ptr[edi], 2
+done:
+ret
+hold ENDP
+
+run PROC
+.data
+notfoundrun byte "Job doesn't exist.",0dh,0ah,0
+foundrun byte "Job Status Updated.",0dh,0ah,0
+.code
+call skipchars
+call rem
+call getop1
+
+mov al, namelen
+cmp al, 0
+je nameprompt
+cmp al, 9
+jae nameprompt
+jmp keepgoing
+nameprompt:
+mov namelen, 0
+cld
+mov edi, offset op1
+mov esi, offset empty
+mov ecx, 10
+rep movsb
+call getnewname
+mov al, namelen
+cmp al, 0
+jbe done
+cmp al, 9
+jae done
+keepgoing:
+call findjob
+mov al,jobnamenum
+cmp al,0
+je done
+mov edx,offset foundrun
+call writestring
+mov edi,jobnamepos
+add edi,10
+mov byte ptr [edi],1
+done:
+ret
+run ENDP
+
+findjob PROC
+.data
+jobnotfoundmsg byte "Job not found.",0dh,0ah,0
+jobnamepos dword ?
+jobnamenum byte 9
+.code
+mov jobnamenum,10
+mov jobnamepos,offset jobs
+again:
+mov al,jobnamenum
+cmp al,0
+je nope
+cld
+mov esi,jobnamepos
+mov edi,offset op1
+mov ecx,2
+repe cmpsd
+je found
+add jobnamepos,14
+dec jobnamenum
+jmp again
+nope:
+mov edx,offset jobnotfoundmsg
+call writestring
+jmp done
+found:
+done:
+ret
+findjob ENDP
 
 load PROC
 .data
@@ -407,6 +534,7 @@ showrt byte "Run Time: ", 0
 showloadtime byte "Load Time: ", 0dh, 0ah, 0
 jobnummsg2 byte "Info:", 0dh, 0ah, 0
 jmsg1 byte " ", 0dh,0ah,0dh,0ah,0
+priposition dword ?
 .code
 mov esi, offset jobs
 mov ecx, 10
@@ -433,7 +561,7 @@ call crlf
 mov edx, offset showstat
 call writestring
 add esi, 1
-movzx eax, byte ptr[esi]
+;//__________________
 call disppri
 mov edx, offset showrt
 call writestring
@@ -454,7 +582,7 @@ ret
 showjobs ENDP
 
 disppri PROC
-mov al,op2
+mov al,byte ptr [esi]
 cmp al,2
 je theholding
 cmp al, 1
