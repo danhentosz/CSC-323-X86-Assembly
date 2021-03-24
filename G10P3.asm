@@ -201,6 +201,8 @@ loadstr byte "LOAD", 0
 showstr byte "SHOW",0
 runstr byte "RUN",0
 holdstr byte "HOLD",0
+killstr byte "KILL",0
+badstatusmsg byte "The Job Must Be In Hold Mode.",0dh,0ah,0
 .code
 cld
 mov esi, offset loadstr
@@ -229,8 +231,67 @@ mov edi, offset command
 mov ecx, 5
 repe cmpsb
 jz hold
+
+cld
+mov esi, offset killstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz kill
 ret
 compare ENDP
+
+kill PROC
+.data
+foundkill byte "Job Killed.",0dh,0ah,0
+.code
+call skipchars
+call rem
+call getop1
+
+mov al, namelen
+cmp al, 0
+je nameprompt
+cmp al, 9
+jae nameprompt
+jmp keepgoing
+nameprompt :
+mov namelen, 0
+cld
+mov edi, offset op1
+mov esi, offset empty
+mov ecx, 10
+rep movsb
+call getnewname
+mov al, namelen
+cmp al, 0
+jbe done
+cmp al, 9
+jae done
+keepgoing :
+call findjob
+mov al, jobnamenum
+cmp al, 0
+je done
+mov esi,jobnamepos
+add esi,10
+mov al,byte ptr [esi]
+cmp al,2
+je good
+jmp bad
+good:
+mov edx, offset foundkill
+call writestring
+;//Call a kill procedure here.
+;//We have the starting index of the job to kill
+;//in jobnamepos
+jmp done
+bad:
+mov edx,offset badstatusmsg
+call writestring
+done:
+ret
+kill ENDP
 
 hold PROC
 call skipchars
