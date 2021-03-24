@@ -326,56 +326,57 @@ dupname PROC
 .data
 dupnamecount byte 10
 dupnamemsg byte "Job Name Already Exists.",0dh,0ah,0
-dupstatus byte 1
+currentpostemp dword jobs
 .code
+mov currentpostemp,offset jobs
+mov edi,currentpostemp
+mov esi,offset op1
 mov dupnamecount,10
-cld
-mov edi, offset jobs
 again:
 mov al,dupnamecount
 cmp al,0
-je good
-mov esi,offset op1
+je done
+mov esi, offset op1
+cld
 mov ecx,2
 repe cmpsd
 jz bad
-add edi,14
+add currentpostemp,14
+mov edi,currentpostemp
 dec dupnamecount
 jmp again
 bad:
 mov edx,offset dupnamemsg
 call writestring
-jmp done
-good:
 done:
 ret
 dupname ENDP
 getnewrun PROC
 .data
-newrunmsg byte "Enter a Run Time: ",0
-newrunbuf byte 4 dup(?)
+newrunmsg byte "Enter a Run Time: ", 0
+newrunbuf byte 4 dup(? )
 .code
-mov edx,offset newrunmsg
+mov edx, offset newrunmsg
 call writestring
-mov edx,offset newrunbuf
-mov ecx,3
+mov edx, offset newrunbuf
+mov ecx, 3
 call readstring
-mov spot,offset newrunbuf
+mov spot, offset newrunbuf
 call getop3
 ret
 getnewrun ENDP
 
 getnewpri PROC
 .data
-newprimsg byte "Enter a Priority: ",0
-newpribuf byte 3 dup(?)
+newprimsg byte "Enter a Priority: ", 0
+newpribuf byte 3 dup(? )
 .code
-mov edx,offset newprimsg
+mov edx, offset newprimsg
 call writestring
-mov edx,offset newpribuf
-mov ecx,2
+mov edx, offset newpribuf
+mov ecx, 2
 call readstring
-mov spot,offset newpribuf
+mov spot, offset newpribuf
 call getop2
 ret
 getnewpri ENDP
@@ -397,21 +398,27 @@ ret
 getnewname ENDP
 showjobs PROC
 .data
-tempspot byte 2 dup(?)
-showname byte "Name: ",0
-showpri byte "Priority: ",0
-showstat byte "Status: ",0
-showrt byte "Run Time: ",0
-showloadtime byte "Load Time: ",0dh,0ah,0
-jobnummsg2 byte "Info:",0dh,0ah,0
+totaljobs byte 1
+tempspot byte 2 dup(? )
+showname byte "Name: ", 0
+showpri byte "Priority: ", 0
+showstat byte "Status: ", 0
+showrt byte "Run Time: ", 0
+showloadtime byte "Load Time: ", 0dh, 0ah, 0
+jobnummsg2 byte "Info:", 0dh, 0ah, 0
+jmsg1 byte " ", 0dh,0ah,0dh,0ah,0
 .code
-mov esi,offset jobs
-mov ecx,10
+mov esi, offset jobs
+mov ecx, 10
+mov totaljobs, 1
+call crlf
 start:
 cmp esi, jobsfull
 jge full
 cmp byte ptr[esi], null
 je done
+mov edx, offset jmsg1
+call writestring
 mov edx, offset showname
 call writestring
 mov edx, esi
@@ -435,7 +442,7 @@ movzx eax, byte ptr[esi]
 call writedec
 call crlf
 mov edx, offset showloadtime
-call writestring
+;// call writestring
 add esi,3
 loop start
 jmp done
