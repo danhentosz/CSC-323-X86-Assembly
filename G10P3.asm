@@ -1,289 +1,439 @@
-;//HentoszP3 || Assembly Language Programming CSC 323
-;//Daniel Hentosz, Scott Trunzo || GROUP 10
-;//hen3883@calu.edu, tru1931@calu.edu
 .386
 .model flat, stdcall
 .stack 4096
 ExitProcess PROTO, dwExitCode:DWORD
 INCLUDE irvine32.inc
 .data
-myptr dword ?
-input byte 48 dup(? );//This size wors good beacuse when we reset the buffer, a dword fits in here evenly.
-command byte 7 dup(? );//The biggest command size is 6("CHANGE") and we need a null char to end the string
-op1 byte 9 dup(? );//Why size 9? Beacuse the Max name legth is 8, and we need a null terminating char.
-op2 sbyte -1 ;//Hold the priority the user entered, 0-7.
-op3 byte 3 dup('-');//Holds the run_time the user entered, which is a number 1-50.
-msg1 byte "COMMAND: ",0
-msg2 byte "Operand 1: ",0
-msg3 byte "Operand 2: ",0
-msg4 byte "Operand 3: ",0
+input byte 48 dup(? )
+spot dword ?
+command byte 8 dup(? )
+op1 byte 10 dup(? )
+op2 sbyte -1
+op3 byte ?
+;//___________________
+msg1 byte "Command: ", 0
+msg2 byte "Name: ", 0
+msg3 byte "Priority: ", 0
+msg4 byte "Run Time: ", 0
 .code
 main PROC
-start:
+beginit:
 mov edx, offset input
-mov ecx, lengthof input
+mov ecx, 48
 call readstring
-mov myptr, offset input
-;//Putting the correct inforation in each varible.
+mov spot, offset input
+call rem
 call getcommand
-call getop1
-call getop2
-call getop3
-;//Shows what we have in each var(The Command,and operand 1, 2, and 3)
-call showvars
-;//Reset our vars so we can loop again:
-call clear
-jmp start
+call compare
+call crlf
+;//_________________________
+call initstuff
+jmp beginit
 exit
 main ENDP
 
-;//Recives an address in myptr and removes whitespace until a character is hit
 rem PROC
-mov esi,myptr
-L1:
-mov al, byte ptr[esi]
-inc esi
-cmp al, ' '
-je L1
-cmp al, tab
-je L1
-dec esi
-mov myptr, esi
-ret
-rem ENDP
-
-skipchar PROC
-mov esi,myptr
+mov esi,spot
+mov ecx,48
 L1:
 mov al,byte ptr [esi]
 inc esi
+cmp al,' '
+loope L1
+cmp al,tab
+loope L1
+dec esi
+mov spot,esi
+ret
+rem ENDP
+
+skipchars PROC
+mov esi,spot
+mov ecx,48
+L1:
+mov al,byte ptr [esi]
 cmp al,' '
 je done
 cmp al,tab
 je done
 cmp al,null
 je done
-jmp L1
+inc esi
+loop L1
 done:
-mov myptr,esi
+mov spot,esi
 ret
-skipchar ENDP
-;//Stores the command in the var command.
-;//If they enter a command greater than 6 character's, the var command is to to null
+skipchars ENDP
+
 getcommand PROC
-.data
-count byte 0
-.code
-call rem
-mov esi,myptr
+mov esi,spot
 mov edi,offset command
 mov ecx,7
 L1:
 mov al,byte ptr [esi]
-inc esi
 cmp al,' '
 je done
 cmp al,tab
 je done
 cmp al,null
 je done
-mov byte ptr [edi],al
-inc edi
-inc count
+cld
+movsb
 loop L1
 done:
-cmp count,7
-jb good
-mov edi,offset command
-mov dword ptr [edi],null
-mov word ptr [edi+4],null
-good:
-dec esi
-;//Updating myptr top point to the next segment of information the user entered:
-mov myptr, esi
-call skipchar
-call rem
+mov spot,esi
 ret
 getcommand ENDP
 
-;//Stores the first operand in the var op1
-;//If they enter a operand greater than 8 character's, the var op1 is to to null
 getop1 PROC
-mov count,0
-mov esi, myptr
-mov edi, offset op1
-mov ecx, 9
+mov esi,spot
+mov edi,offset op1
+mov ecx,9
 L1:
-mov al, byte ptr[esi]
-inc esi
-cmp al, ' '
+mov al,byte ptr [esi]
+cmp al,' '
 je done
-cmp al, tab
+cmp al,tab
 je done
-cmp al, null
+cmp al,null
 je done
-mov byte ptr[edi], al
-inc edi
-inc count
+cld
+movsb
+inc namelen
 loop L1
 done:
-cmp count,9
-jb good
-mov edi, offset op1
-mov dword ptr[edi], null
-mov dword ptr[edi + 4], null
-good:
-dec esi
-;//Updating myptr top point to the next segment of information the user entered:
-mov myptr, esi
-call skipchar
-call rem
+mov spot,esi
 ret
 getop1 ENDP
 
-;//Stores the second operand in the var op2
-;//If they enter a operand greater than 7 or less than 0, the var op2 is to to -1
 getop2 PROC
-mov esi,myptr
-mov al,byte ptr [esi+1]
-cmp al,' '
-je good
-cmp al,tab
-je good
-cmp al,null
-je good
-jmp bad
-good:
+mov esi,spot
+inc esi
 mov al,byte ptr [esi]
 call isdigit
-jnz bad
-and al,00001111b
+jz bad
+cmp al,' '
+je good1
+cmp al,tab
+je good1
+cmp al,null
+je good1
+jmp bad
+good1:
+dec esi
+mov al, byte ptr[esi]
+call isdigit
+jz good2
+jmp bad
+good2:
+mov edx, esi
+mov ecx, 1
+call parsedecimal32
 cmp al,7
-ja bad
+jg bad
 cmp al,0
-jb bad
-cmp al,0
+jl bad
 mov op2,al
 jmp done
 bad:
 mov op2,-1
 done:
-call skipchar
-call rem
+	mov spot,esi
 ret
 getop2 ENDP
 
-
-;//Stores the third operand in the var op3
-;//If they enter a operand greater than 50 or less than 1, the var op3 is to to null
 getop3 PROC
-mov esi, myptr
-mov edi,offset op3
-mov al, byte ptr[esi + 1]
-cmp al, ' '
-je good
-cmp al, tab
-je good
-cmp al, null
-je good
-call isdigit
-jz twolen
-jmp bad
-twolen:
-mov al,byte ptr [esi+2]
-cmp al,' '
-je goodtwolen
-cmp al,tab
-je goodtwolen
-cmp al,null
-je goodtwolen
-jmp bad
-goodtwolen:
-mov al, byte ptr[esi]
-and al, 00001111b
-mov dl, 10
-mul dl
-mov byte ptr[edi], al
-mov al, byte ptr[esi + 1]
-and al, 00001111b
-add byte ptr[edi], al
-;//Checking a valid range 1-50:
-mov esi,offset op3 
+mov esi,spot
 mov al,byte ptr [esi]
+call isdigit
+je good1
+jmp bad
+good1:
+mov esi,spot
+inc esi
+mov al,byte ptr [esi]
+call isdigit
+jz good2dig
+cmp al,' '
+je good1dig
+cmp al,tab
+je good1dig
+cmp al,null
+je good1dig
+jmp bad
+good2dig:
+mov esi,spot
+mov al,byte ptr [esi]
+and al,00001111b
+mov dl,10
+mul dl
+mov op3, al
+inc esi
+mov al,byte ptr [esi]
+and al,00001111b
+add op3,al
+jmp done
+good1dig:
+mov esi,spot
+mov al,byte ptr [esi]
+and al,00001111b
+mov op3,al
+jmp done
+bad:
+mov op3,null
+jmp done2
+done:
+mov al,op3
 cmp al,50
 ja bad
 cmp al,1
 jb bad
-jmp done
-good :
-mov al, byte ptr[esi]
-call isdigit
-jnz bad
-and al, 00001111b
-mov byte ptr [edi],al
-jmp done
-bad :
-mov word ptr [edi],null
-done:
+done2:
 ret
 getop3 ENDP
 
-;//Resets our varibles so can call the main loop again.
-clear PROC
-mov edi, myptr
-mov dword ptr[edi], null
-mov dword ptr[edi + 4], null
+compare PROC
+.data
+loadstr byte "LOAD", 0
+showstr byte "SHOW",0
+.code
+cld
+mov esi, offset loadstr
 mov edi, offset command
-mov dword ptr[edi], null
-mov word ptr[edi + 4], null
-mov byte ptr[edi + 6], null
-mov ecx, 12
-mov edi, offset input
-L1 :
-mov dword ptr[edi], null
-add edi, 4
-loop L1
-mov edi, offset op1
-mov dword ptr[edi], null
-mov dword ptr[edi + 4], null
-mov byte ptr[edi + 8], null
-mov op2, -1
-mov edi, offset op3
-mov word ptr[edi], null
-mov byte ptr[edi + 2], null
-mov count, 0
+mov ecx, 5
+repe cmpsb
+jz load
+
+cld
+mov esi, offset showstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz showjobs
 ret
-clear ENDP
+compare ENDP
 
-;//Good for debuging.
-;//Allows us to see what we have in each var.
-;//If the user didnt ener anything for a var its set to null.
-;//If the user enterd an invalid length its set to null
-;//if the user entered an invalid range, its set to 0. Range applies to the priority(0-7) and run_time(1-50)
-showvars PROC
-mov edx, offset msg1
+load PROC
+.data
+jobs byte 140 dup(?)
+jobsfull dword jobsfull
+curjob dword jobs
+totjobs byte 0
+fullmsg byte "Job Record Full",0dh,0ah,0
+jobava equ 0
+jobrun equ 1
+jobhold equ 2
+.code
+cld
+mov esi,curjob
+mov edi,jobsfull
+mov ecx,2
+repe cmpsd
+je full
+call skipchars
+call rem
+call getop1
+call skipchars
+call rem
+call getop2
+;//Compare the priority here
+call skipchars
+call rem
+call getop3
+;//Compare the run time here
+;//Compare the name here
+mov al,namelen
+cmp al,0
+je nameprompt
+cmp al,9
+jae nameprompt
+jmp cont
+nameprompt:
+mov namelen,0
+cld
+mov edi,offset op1
+mov esi,offset empty
+mov ecx,10
+rep movsb
+call getnewname
+mov al, namelen
+cmp al, 0
+jbe done
+cmp al, 9
+jae done
+cont:
+mov al,op2
+cmp al,8
+jae priprompt
+jmp cont2 
+priprompt:
+call getnewpri
+mov al,op2
+cmp al,7
+ja done
+cont2:
+mov al,op3
+cmp al,50
+ja runprompt
+cmp al,0
+jbe runprompt
+jmp cont3
+runprompt:
+call getnewrun
+mov al,op3
+cmp al,50
+ja done
+cmp al,0
+jbe done
+cont3:
+inc totjobs
+cld
+mov esi,offset op1
+mov edi,curjob
+mov ecx,8
+rep movsb
+mov edi,curjob
+add edi,9
+movzx eax,op2
+mov byte ptr [edi],al
+mov edi,curjob
+add edi,10
+mov byte ptr [edi],2
+mov edi,curjob
+add edi,11
+movzx eax,op3
+mov byte ptr [edi],al
+add curjob,14
+jmp done
+full:
+mov edx,offset fullmsg
 call writestring
-mov edx, offset command
-call writestring
+done:
+ret
+load ENDP
 
+getnewrun PROC
+.data
+newrunmsg byte "Enter a Run Time: ",0
+newrunbuf byte 4 dup(?)
+.code
+mov edx,offset newrunmsg
+call writestring
+mov edx,offset newrunbuf
+mov ecx,3
+call readstring
+mov spot,offset newrunbuf
+call getop3
+ret
+getnewrun ENDP
+
+getnewpri PROC
+.data
+newprimsg byte "Enter a Priority: ",0
+newpribuf byte 3 dup(?)
+.code
+mov edx,offset newprimsg
+call writestring
+mov edx,offset newpribuf
+mov ecx,2
+call readstring
+mov spot,offset newpribuf
+call getop2
+ret
+getnewpri ENDP
+
+getnewname PROC
+.data
+newnamemsg byte "Enter a job name: ", 0
+newnamebuf byte 10 dup(? )
+namelen byte 0
+.code
+mov edx, offset newnamemsg
+call writestring
+mov edx, offset newnamebuf
+mov ecx, 9
+call readstring
+mov spot, offset newnamebuf
+call getop1
+ret
+getnewname ENDP
+showjobs PROC
+.data
+tempspot byte 2 dup(?)
+showname byte "Name: ",0
+showpri byte "Priority: ",0
+showstat byte "Status: ",0
+showrt byte "Run Time: ",0
+showloadtime byte "Load Time: ",0dh,0ah,0
+jobnummsg2 byte "Info:",0dh,0ah,0
+.code
+mov esi,offset jobs
+mov ecx,10
+start:
+cmp esi, jobsfull
+jge full
+cmp byte ptr[esi], null
+je done
+mov edx, offset showname
+call writestring
+mov edx, esi
+call writestring
 call crlf
-mov edx, offset msg2
+mov edx, offset showpri
 call writestring
-mov edx, offset op1
-call writestring
-
-call crlf
-mov edx, offset msg3
-call writestring
-movsx eax, op2
-call writeint
-
-call crlf
-mov edx, offset msg4
-call writestring
-movzx eax, op3
+add esi, 9
+movzx eax, byte ptr[esi]
 call writedec
 call crlf
+mov edx, offset showstat
+call writestring
+add esi, 1
+movzx eax, byte ptr[esi]
+call writedec
+call crlf
+mov edx, offset showrt
+call writestring
+add esi, 1
+movzx eax, byte ptr[esi]
+call writedec
+call crlf
+mov edx, offset showloadtime
+call writestring
+add esi,3
+loop start
+jmp done
+full:
+mov edx,offset fullmsg
+call writestring
+done:
 ret
-showvars ENDP
+showjobs ENDP
+
+initstuff PROC
+.data
+empty byte 48 dup(?)
+.code
+mov namelen,0
+cld
+mov edi,offset command
+mov esi,offset empty
+mov ecx,8
+rep movsb
+
+cld
+mov edi, offset op1
+mov esi, offset empty
+mov ecx, 10
+rep movsb
+
+mov op2,-1
+mov op3,null
+
+cld
+mov edi, offset input
+mov esi, offset empty
+mov ecx,48
+rep movsb
+ret
+initstuff ENDP
 END main
