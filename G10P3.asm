@@ -196,6 +196,8 @@ compare PROC
 .data
 loadstr byte "LOAD", 0
 showstr byte "SHOW",0
+runstr byte "RUN",0
+holdstr byte "HOLD",0
 .code
 cld
 mov esi, offset loadstr
@@ -247,6 +249,10 @@ cmp al,0
 je nameprompt
 cmp al,9
 jae nameprompt
+call dupname
+mov al,dupnamecount
+cmp al,0
+jne done
 jmp cont
 nameprompt:
 mov namelen,0
@@ -261,6 +267,10 @@ cmp al, 0
 jbe done
 cmp al, 9
 jae done
+call dupname
+mov al, dupnamecount
+cmp al, 0
+jne done
 cont:
 mov al,op2
 cmp al,8
@@ -312,6 +322,34 @@ done:
 ret
 load ENDP
 
+dupname PROC
+.data
+dupnamecount byte 10
+dupnamemsg byte "Job Name Already Exists.",0dh,0ah,0
+dupstatus byte 1
+.code
+mov dupnamecount,10
+cld
+mov edi, offset jobs
+again:
+mov al,dupnamecount
+cmp al,0
+je good
+mov esi,offset op1
+mov ecx,2
+repe cmpsd
+jz bad
+add edi,14
+dec dupnamecount
+jmp again
+bad:
+mov edx,offset dupnamemsg
+call writestring
+jmp done
+good:
+done:
+ret
+dupname ENDP
 getnewrun PROC
 .data
 newrunmsg byte "Enter a Run Time: ",0
@@ -389,8 +427,7 @@ mov edx, offset showstat
 call writestring
 add esi, 1
 movzx eax, byte ptr[esi]
-call writedec
-call crlf
+call disppri
 mov edx, offset showrt
 call writestring
 add esi, 1
@@ -409,6 +446,24 @@ done:
 ret
 showjobs ENDP
 
+disppri PROC
+mov al,op2
+cmp al,2
+je theholding
+cmp al, 1
+je therunning
+theholding:
+mov edx,offset holdstr
+call writestring
+call crlf
+jmp done
+therunning:
+mov edx, offset runstr
+call writestring
+call crlf
+done:
+ret
+disppri ENDP
 initstuff PROC
 .data
 empty byte 48 dup(?)
