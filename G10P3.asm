@@ -198,11 +198,12 @@ getop3 ENDP
 compare PROC
 .data
 loadstr byte "LOAD", 0
-showstr byte "SHOW",0
-runstr byte "RUN",0
-holdstr byte "HOLD",0
-killstr byte "KILL",0
-badstatusmsg byte "The Job Must Be In Hold Mode.",0dh,0ah,0
+showstr byte "SHOW", 0
+runstr byte "RUN", 0
+holdstr byte "HOLD", 0
+killstr byte "KILL", 0
+changestr byte "CHANGE", 0
+badstatusmsg byte "The Job Must Be In Hold Mode.", 0dh, 0ah, 0
 .code
 cld
 mov esi, offset loadstr
@@ -238,9 +239,75 @@ mov edi, offset command
 mov ecx, 5
 repe cmpsb
 jz kill
+
+cld
+mov esi, offset changestr
+mov edi, offset command
+mov ecx, 7
+repe cmpsb
+jz change
 ret
 compare ENDP
 
+
+change PROC
+.data
+foundchange byte "Job Priority Changed.",0dh,0ah,0
+.code
+call skipchars
+call rem
+call getop1
+;//_______________________
+call skipchars
+call rem
+call getop2
+;//______________________
+mov al, namelen
+cmp al, 0
+je nameprompt
+cmp al, 9
+jae nameprompt
+jmp keepgoing
+nameprompt :
+mov namelen, 0
+cld
+mov edi, offset op1
+mov esi, offset empty
+mov ecx, 10
+rep movsb
+call getnewname
+mov al, namelen
+cmp al, 0
+jbe done
+cmp al, 9
+jae done
+keepgoing :
+call findjob
+mov al, jobnamenum
+cmp al, 0
+je done
+
+mov al, op2
+cmp al, 8
+jae priprompt
+jmp cont
+priprompt:
+call getnewpri
+mov al, op2
+cmp al, 7
+ja done
+cont:
+;//Now just get the new priority, check it, and place it
+;//jobnamepos is pointing to the start of the record
+mov esi, jobnamepos
+add esi, 9
+movzx eax, op2
+mov byte ptr[esi],al
+mov edx,offset foundchange
+call writestring
+done:
+ret
+change ENDP
 kill PROC
 .data
 foundkill byte "Job Killed.",0dh,0ah,0
