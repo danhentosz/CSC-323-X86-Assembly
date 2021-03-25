@@ -15,6 +15,7 @@ msg1 byte "Command: ", 0
 msg2 byte "Name: ", 0
 msg3 byte "Priority: ", 0
 msg4 byte "Run Time: ", 0
+goodbye byte "Goodbye, have a nice day.",0dh,0ah,0
 .code
 main PROC
 mov eax, black + (gray * 16)
@@ -28,6 +29,15 @@ mov spot, offset input
 call rem
 call getcommand
 call compare
+cld
+mov esi, offset quitstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz done
+;//We need to see if we should print a new line
+;//We need this beacuse the show joobs procedure will 
+;//run off the screen when there are 10 jobs
 mov al,pausecount
 cmp pausecount,60
 je cont
@@ -36,6 +46,9 @@ cont:
 ;//_________________________
 call initstuff
 jmp beginit
+done:
+mov edx,offset goodbye
+call writestring
 exit
 main ENDP
 
@@ -207,6 +220,9 @@ runstr byte "RUN", 0
 holdstr byte "HOLD", 0
 killstr byte "KILL", 0
 changestr byte "CHANGE", 0
+helpstr byte "HELP", 0
+quitstr byte "QUIT", 0
+stepstr byte "STEP", 0
 badstatusmsg byte "The Job Must Be In Hold Mode.", 0dh, 0ah, 0
 .code
 cld
@@ -250,9 +266,85 @@ mov edi, offset command
 mov ecx, 7
 repe cmpsb
 jz change
+
+cld
+mov esi, offset helpstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz help
+
+cld
+mov esi, offset stepstr
+mov edi, offset command
+mov ecx, 5
+repe cmpsb
+jz step
 ret
 compare ENDP
 
+step PROC
+call rem
+mov esi, spot
+call getop3
+;//If the user entered a valid run time it is in op3, otherwide op3 is null/0
+mov al, op3
+cmp al, 0
+je defaulttime
+;//If we get here, they entered a number, so step N ammount of time
+;//The number is in op3
+
+;//If the user didnt enter anything, just steep 1 time:
+defaulttime:
+mov op3,1
+
+
+
+
+
+;//_____________________________________________
+;//NEEDS TO BE IMPLEMENTED
+;//______________________________________
+done:
+ret
+step ENDP
+
+help PROC
+.data
+h1msg byte "Enter a command: QUIT, HELP, SHOW, RUN, HOLD, KILL, STEP, CHANGE, or LOAD.",0dh,0ah,0
+h2msg byte "QUIT-Will quit the program.",0dh,0ah,0
+h3msg byte "HELP-Will provide help with the program.", 0dh, 0ah, 0
+h4msg byte "SHOW-To show the current records.", 0dh, 0ah, 0
+h5msg byte "RUN-Will change the status of a job from HOLD to RUN.", 0dh, 0ah, 0
+h6msg byte "HOLD-Will change the status of a job from RUN to HOLD.", 0dh, 0ah, 0
+h7msg byte "KILL-Removes a record. The record must be in the HOLD mode.", 0dh, 0ah, 0
+h8msg byte "STEP-Processes n cycles of the simulation stepping the system clock.", 0dh, 0ah, 0
+h9msg byte "CHANGE-Updates a jobs priority. Must be a value 0-7.", 0dh, 0ah, 0
+h10msg byte "LOAD-Creates a job and places it in the job_queue.", 0dh, 0ah, 0
+
+.code
+mov edx,offset h1msg
+call writestring
+mov edx, offset h2msg
+call writestring
+mov edx, offset h3msg
+call writestring
+mov edx, offset h4msg
+call writestring
+mov edx, offset h5msg
+call writestring
+mov edx, offset h6msg
+call writestring
+mov edx, offset h7msg
+call writestring
+mov edx, offset h8msg
+call writestring
+mov edx, offset h9msg
+call writestring
+mov edx, offset h10msg
+call writestring
+ret
+help ENDP
 
 change PROC
 .data
