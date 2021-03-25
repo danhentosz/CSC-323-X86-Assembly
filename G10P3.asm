@@ -28,7 +28,11 @@ mov spot, offset input
 call rem
 call getcommand
 call compare
+mov al,pausecount
+cmp pausecount,60
+je cont
 call crlf
+cont:
 ;//_________________________
 call initstuff
 jmp beginit
@@ -715,6 +719,8 @@ mov edx, offset showloadtime
 call writestring
 mov al,pausecount
 cmp al,30
+je cont
+cmp al,60
 je cont
 call crlf
 cont:
