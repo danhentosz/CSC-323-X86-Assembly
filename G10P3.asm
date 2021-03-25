@@ -285,6 +285,13 @@ call writestring
 ;//Call a kill procedure here.
 ;//We have the starting index of the job to kill
 ;//in jobnamepos
+;//________________SHOULD WORK ONCE I FIX SHOW PROC_____________________
+cld
+mov edi, jobnamepos
+mov esi, offset empty
+mov ecx, 14
+rep movsb
+;//___________________________________________________
 jmp done
 bad:
 mov edx,offset badstatusmsg
@@ -594,60 +601,63 @@ showstat byte "Status: ", 0
 showrt byte "Run Time: ", 0
 showloadtime byte "Load Time: ", 0dh, 0ah, 0
 jobnummsg2 byte "Info:", 0dh, 0ah, 0
-jmsg1 byte " ", 0dh,0ah,0dh,0ah,0
+jmsg1 byte " ", 0dh, 0ah, 0dh, 0ah, 0
 priposition dword ?
 .code
-mov esi, offset jobs
-mov ecx, 10
-mov totaljobs, 1
-call crlf
-start:
-cmp esi, jobsfull
-jge full
-cmp byte ptr[esi], null
-je done
-mov edx, offset jmsg1
+mov ecx,10
+mov priposition,offset jobs
+mov esi,priposition
+again:
+add esi,10
+mov al,byte ptr [esi]
+cmp al,null
+jne good
+add priposition, 14
+mov esi, priposition
+loop again
+jmp done
+good:
+call printnameneat
+mov edx,offset showpri
 call writestring
-mov edx, offset showname
-call writestring
-mov edx, esi
-call writestring
-call crlf
-mov edx, offset showpri
-call writestring
-add esi, 9
+dec esi
 movzx eax, byte ptr[esi]
 call writedec
 call crlf
 mov edx, offset showstat
 call writestring
-add esi, 1
-;//__________________
+inc esi
 call disppri
 mov edx, offset showrt
 call writestring
-add esi, 1
+inc esi
 movzx eax, byte ptr[esi]
 call writedec
 call crlf
 mov edx, offset showloadtime
-;// call writestring
-add esi,3
-loop start
-jmp done
-full:
-mov edx,offset fullmsg
 call writestring
+call crlf
+add priposition,14
+mov esi,priposition
+loop again
 done:
 ret
 showjobs ENDP
 
-disppri PROC
-mov al,byte ptr [esi]
+printnameneat PROC
+mov edx,offset showname
+call writestring
+mov edx, priposition
+call writestring
+call crlf
+ret
+printnameneat ENDP
+disppri PROC uses esi
+mov esi,priposition
+mov al,byte ptr [esi+10]
 cmp al,2
 je theholding
-cmp al, 1
-je therunning
+jmp therunning
 theholding:
 mov edx,offset holdstr
 call writestring
