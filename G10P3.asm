@@ -86,7 +86,7 @@ str_confirm_run    byte "Job Status Updated.", 0dh, 0ah, 0
 ; - used in conjunction with <str_line>, <str_blank>, and <str_pointer>.
 str_error_badstat byte "The Job Must Be In Hold Mode.", 0dh, 0ah, 0
 str_error_run     byte "Job does not exist.", 0dh, 0ah, 0
-str_error_toomuch byte "Cannot load; job records full (1o entries).", 0dh, 0ah, 0
+str_error_toomuch byte "Cannot load; job records full (10 entries).", 0dh, 0ah, 0
 str_error_dup     byte "Cannot load; job name already exists.", 0dh, 0ah, 0
 str_error_baddata byte "Unrecognized command.",0dh, 0ah, 0
 
