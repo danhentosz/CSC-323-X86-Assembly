@@ -3,10 +3,14 @@ COMMENT !                                                .
 .Created By:                                             .
 .             - Daniel Hentosz (HEN3883@calu.edu),       .
 .             - Scott Trunzo   (TRU1931@calu.edu)        .
-.			                                 .
+.                                                        .
 .Last Revised: April 1st, 2021.                (4/1/2021).
 .Written for Assembly Language Programming  (CSC-323-R01).
 Description:
+	Simulates task-flow of an operating system,
+	- this entails loading, running, and killing jobs,
+	- the user can interface with the program via commands*
+	*see the <...help...> strings under <...prompt...> for details.
 !
 
 ; Defines various pieces of assembler meta-data,
@@ -40,7 +44,8 @@ INCLUDE irvine32.inc
 ; Defines odds and ends used for formatting throughout the program,
 ; - meant to be used in conjunction with strings found below (see below).
 str_pointer byte "> ", 0
-
+str_line    byte "------------------------------------------------------------------------------------------------------------------------", 0dh, 0ah, 0
+str_os      byte "Welcome to O. S. S. ...", 0dh, 0ah, "Type 'help' to see the list of commands. ", 0dh, 0ah, "Type 'quit' to exit the program.", 0dh, 0ah, 0
 
 
 ; Prompt:
@@ -51,28 +56,25 @@ str_prompt_run   byte "Enter a Run Time: ", 0
 str_prompt_pri   byte "Enter a Priority: ", 0
 str_prompt_name  byte "Enter a job name: ", 0
 
-str_prompt_help1 byte "This program simulates the processing of job records, ", 0dh, 0ah,
+str_prompt_help1 byte "This program simulates the processing an OS's tasks (jobs), ", 0dh, 0ah,
 "the process is meant to be similar to that of an OS processing tasks.", 0dh, 0ah,
-"Through the use of various commands you can add, alter, and iterate through jobs currently loaded. ", 0dh, 0ah, 0dh, 0ah,
-"Available commands with no operands:", 0dh, 0ah,
+"Through the use of various commands you can add, alter, and iterate through jobs currently loaded. ", 0dh, 0ah, 0
+str_prompt_help2 byte "Available commands with no operands:", 0dh, 0ah,
 "QUIT - terminates the program,", 0dh, 0ah,
 "HELP - displays this message again,", 0dh, 0ah, 
-"SHOW - lists all currently loaded jobs.", 0dh, 0ah, 0dh, 0ah, 0
-
-str_prompt_help2 byte "Available commands with one operand:", 0dh, 0ah,
+"SHOW - lists all currently loaded jobs.", 0dh, 0ah, 0
+str_prompt_help3_1 byte "Available commands with one operand:", 0dh, 0ah,
 "RUN  <job name> - changes the status of <job name> from hold to run.", 0dh, 0ah,
 "HOLD <job name> - changes the status of <job name> from run to hold.", 0dh, 0ah,
 "KILL <job name> - removes a job from the loaded job queue*", 0dh, 0ah,
 "*<job name> must be in HOLD mode.", 0dh, 0ah,
 "STEP <cycles>*  - processes jobs for <cycles> iterations.", 0dh, 0ah, 0
-
-
-str_prompt_help3 byte "*if <cycles> is not provided, processing occurs for 1 iteration.", 0dh, 0ah, 0dh, 0ah,
-"Available commands with two operands:", 0dh, 0ah,
+str_prompt_help3_2 byte "*if <cycles> is not provided, processing occurs for 1 iteration.", 0dh, 0ah, 0
+str_prompt_help4 byte "Available commands with two or more operands:", 0dh, 0ah,
 "CHANGE <job name> <priority> - changes <job name>'s priority to <priority>.*", 0dh, 0ah,
 "*<priority> must be an integer (0-7).", 0dh, 0ah,
-"LOAD   <job name> <priority> - appends a new job to the current job queue.*", 0dh, 0ah,
-"*<job name> must be eight or less characters, <priority> must be an integer (0-7).", 0dh, 0ah, 0
+"LOAD   <job name> <priority> <runtime>- appends a new job to the current job queue.*", 0dh, 0ah,
+"*<job name> must be eight or less characters, <priority> must be an integer (0-7), <runtime> must be an integer (1-50).", 0dh, 0ah, 0
 
 ; Confirm:
 ; Labels <...confirm...>, a set of strings which tell the user input was accepted.
@@ -80,21 +82,23 @@ str_prompt_help3 byte "*if <cycles> is not provided, processing occurs for 1 ite
 str_confirm_change byte "Job Priority Changed.", 0dh, 0ah, 0
 str_confirm_kill   byte "Job Killed.", 0dh, 0ah, 0
 str_confirm_run    byte "Job Status Updated.", 0dh, 0ah, 0
+str_confirm_empty  byte "Exiting step; no job records exist.", 0dh, 0ah, 0
+goodbye byte "Goodbye, have a nice day.",0dh,0ah,0
+showname     byte "Name:      ", 0
+showpri      byte "Priority:  ", 0
+showstat     byte "Status:    ", 0
+showrt       byte "Run Time:  ", 0
 
 ; Error:
 ; Labels <...prompt...>, a set of strings which prompt the user to input data.
 ; - used in conjunction with <str_line>, <str_blank>, and <str_pointer>.
-str_error_badstat byte "The Job Must Be In Hold Mode.", 0dh, 0ah, 0
-str_error_run     byte "Job does not exist.", 0dh, 0ah, 0
-str_error_toomuch byte "Cannot load; job records full (10 entries).", 0dh, 0ah, 0
-str_error_dup     byte "Cannot load; job name already exists.", 0dh, 0ah, 0
-str_error_baddata byte "Unrecognized command.",0dh, 0ah, 0
+str_error_badstat   byte "The Job Must Be In Hold Mode.", 0dh, 0ah, 0
+str_error_run       byte "Job does not exist.", 0dh, 0ah, 0
+str_error_toomuch   byte "Cannot load; job records full (10 entries).", 0dh, 0ah, 0
+str_error_dup       byte "Cannot load; job name already exists.", 0dh, 0ah, 0
+str_error_stepempty byte "Cannot step; no running job records are currently loaded.", 0dh, 0ah, 0
 
 
-inputsize byte 48
-input     byte 48 dup(? )
-spot      dword ?
-command   byte 8 dup(? )
 
 ; Operator:
 ; Labels <op...>, a set of placeholder values which hold numerical operators.
@@ -104,18 +108,16 @@ op1 byte 10 dup(? )
 op2 sbyte - 1
 op3 byte ?
 
-showname     byte "Name:      ", 0
-showpri      byte "Priority:  ", 0
-showstat     byte "Status:    ", 0
-showrt       byte "Run Time:  ", 0
-showloadtime byte "Load Time: ", 0dh, 0ah, 0
-jobnummsg2   byte "Info:      ", 0dh, 0ah, 0
+inputsize byte 48
+input     byte 48 dup(? )
+spot      dword ?
+command   byte 8 dup(? )
+commandlen byte 0
 
-goodbye byte "Goodbye, have a nice day.",0dh,0ah,0
 
 
 ; Key:
-; Labels <...prompt...>, a set of strings which prompt the user to input data.
+; Labels <...key...>, a set of strings which prompt the user to input data.
 ; - used in conjunction with <str_line>, <str_blank>, and <str_pointer>.
 str_key_load   byte "LOAD", 0
 str_key_show   byte "SHOW", 0
@@ -128,47 +130,43 @@ quitstr   byte "QUIT", 0
 stepstr   byte "STEP", 0
 
 
-jobnamepos dword ?
-jobnamenum byte 9
 
+; Job:
+; Labels variables associated with job records, of various types,
+; - this includes the unzeroed block of memory <jobs>.
 jobs byte 140 dup(? )
 jobsfull dword jobsfull
 curjob dword jobs
 totjobs byte 0
-
-Sjobs_name      byte 0
-Sjobs_priority  byte 10
-Sjobs_status    byte 11
-Sjobs_runtime   byte 12
-Sjobs_startime  byte 13
-
-
-jobava equ 0
-jobrun equ 1
+jobssize dword 140
+jobnamepos dword ?
+jobnamenum byte 9
+; Defines constant values used as literals in association with <jobs>.
+jobava  equ 0
+jobrun  equ 1
 jobhold equ 2
 
+
+
+; Misc:
+; Labels miscelaneous variables used as placeholders for user input, and information about job records.
 dupnamecount byte 10
 currentpostemp dword jobs
-
 newrunbuf byte 4 dup(? )
 newpribuf byte 3 dup(? )
 newnamebuf byte 10 dup(? )
 namelen byte 0
-
-
-tempspot byte 2 dup(? )
-
-
-; jmsg1 byte " ", 0dh, 0ah, 0dh, 0ah, 0
 priposition dword ?
 pausecount byte 0
+steppriority  sbyte 0
+stepplace     byte 0
+steptotjobs   byte 0
+findnextplace byte 0
 
 
-stepjobname byte 10 dup(? )
-stepjobtime byte ?
-stepjobpri  byte 0
 
-
+; Empty,
+; Labels a large, empty array, which is used for zeroing any memory in the program which must be reset.
 empty byte 48 dup(? )
 .CODE
 ; Labels the code section of the program.
@@ -184,9 +182,18 @@ main PROC
 	call settextcolor
 	call clrscr
 
+	; Draws the program's welcome message.
+	mov edx, offset str_line
+	call writeString
+	mov edx, offset str_os
+	call writeString
 
+	; Serves as the program's main loop body.
 	beginit :
-		; Draws the pointer onto the screen (used to signify where the user provides input).
+
+		; Prints a prompt letting the user know they can enter input.
+		mov edx, offset str_line
+		call writeString
 		mov edx, offset str_pointer
 		call writeString
 		
@@ -215,28 +222,27 @@ main PROC
 		jz  done
 
 
-;//We need to see if we should print a new line
-;//We need this beacuse the show jobs procedure will 
-;//run off the screen when there are 10 jobs
 
-	mov al, pausecount
-	cmp pausecount, 60
-	je cont
-	call crlf
-
+	; Serves as the main loop iterator.
 	cont:
 		call initstuff
 		jmp beginit
 	
+	; Serves as a terminator for main (includes a goodbye message).
 	done:
+		mov edx, offset str_line
+		call writeString
+
 		mov edx,offset goodbye
 		call writestring
+
+		mov edx, offset str_line
+		call writeString
 		exit
 main ENDP
 
 
 ; REM
-; TYPE: OPAQUE ([eax], [esi], [ecx]).
 ; DESCRIPTION:    Skips any garbage information proceeding the user's command.
 ; PRECONDITIONS:  <spot> has been initalized to point to the user's input. 
 ; POSTCONDITIONS: Updates [spot]'s stored memory address.
@@ -273,7 +279,10 @@ rem PROC
 rem ENDP
 
 
-
+; SKIPCHARS
+; DESCRIPTION:    Skips input to the next segment of whitespace,
+; PRECONDITIONS:  <spot> has been initalized to point to the user's input. 
+; POSTCONDITIONS: Updates [spot]'s stored memory address.
 skipchars PROC
 	mov esi, spot
 	mov cl,  inputsize
@@ -294,6 +303,11 @@ skipchars PROC
 skipchars ENDP
 
 
+
+; GETCOMMAND
+; DESCRIPTION:    Fetches the user's command (and turns it into UPPERCASE),
+; PRECONDITIONS:  <spot> has been initalized to point to the user's input.
+; POSTCONDITIONS: Updates [spot]'s stored memory address, moves input into <command>.
 getcommand PROC
 	mov esi, spot
 	mov edi, offset command
@@ -306,6 +320,8 @@ getcommand PROC
 		je done
 		cmp al, 0
 		je done
+		and al, 11011111b
+		mov byte ptr [esi], al
 		cld
 		movsb
 		loop L1
@@ -316,7 +332,10 @@ getcommand PROC
 getcommand ENDP
 
 
-
+; GETOP1
+; DESCRIPTION:    Grabs type 1 operators (strings),
+; PRECONDITIONS:  <spot> has been initalized to point to the user's input. 
+; POSTCONDITIONS: Updates [spot]'s stored memory address, moves input into <op1>.
 getop1 PROC
 	mov esi, spot
 	mov edi, offset op1
@@ -339,7 +358,11 @@ getop1 PROC
 getop1 ENDP
 
 
-
+; GETOP2
+; DESCRIPTION:    Grabs type 2 operators (integers),
+; PRECONDITIONS:  <spot> has been initalized to point to the user's input. 
+; POSTCONDITIONS: Updates [spot]'s stored memory address, moves input into <op2>*
+; *if input is invalid, <op2> becomes -1.
 getop2 PROC
 	mov esi, spot
 	inc esi
@@ -349,9 +372,9 @@ getop2 PROC
 	jz bad
 	cmp al, ' '
 	je good1
-	cmp al, tab
+	cmp al, '	'
 	je good1
-	cmp al, null
+	cmp al, 0
 	je good1
 	jmp bad
 
@@ -381,7 +404,11 @@ getop2 PROC
 getop2 ENDP
 
 
-
+; GETOP3
+; DESCRIPTION:    Grabs type 3 operators (integers),
+; PRECONDITIONS:  <spot> has been initalized to point to the user's input. 
+; POSTCONDITIONS: Updates [spot]'s stored memory address, moves input into <op2>.
+; *if input is invalid, <op3> becomes 0.
 getop3 PROC
 	mov esi, spot
 	mov al, byte ptr[esi]
@@ -397,9 +424,9 @@ getop3 PROC
 		jz good2dig
 		cmp al, ' '
 		je good1dig
-		cmp al, tab
+		cmp al, '	'
 		je good1dig
-		cmp al, null
+		cmp al, 0
 		je good1dig
 		jmp bad
 
@@ -424,7 +451,7 @@ getop3 PROC
 		jmp done
 
 	bad:
-		mov op3, null
+		mov op3, 0
 		jmp done2
 	done:
 		mov al, op3
@@ -437,7 +464,11 @@ getop3 PROC
 getop3 ENDP
 
 
-
+; COMPARE
+; DESCRIPTION:    Compares <command> against all strings within <...key...>,
+; PRECONDITIONS:  <command> holds valid data. 
+; POSTCONDITIONS: Calls subroutines depending on the <...key...> entry hit*
+; *if <command> is invalid, COMPARE returns to MAIN.
 compare PROC
 	cld
 	mov esi, offset str_key_load
@@ -498,43 +529,244 @@ compare PROC
 compare ENDP
 
 
-
+; STEP
+; DESCRIPTION:    Iterates through entries in <jobs>
+; PRECONDITIONS:  N/A (handles error cases)
+; POSTCONDITIONS: Calls subroutines to iterate through <jobs>*
+; *may terminate with no changes, kill job(s)**, or decrement multiple entries in jobs**
+; **decrements/kills require RUNNING job entries to occur. 
+; + this procedure prompts for missing input.
 step PROC
+	push ecx
+	push eax
+	push esi
+	push edi
+
+	; Checks to see if a priority can be found,
+	; - if not, the procedure terminates prematurely.
+	mov esi, offset jobs
+	call stepfindpriority
+	mov al, steppriority
+	cmp al, 8
+	je LTWE
+
+	; Fetches the user's step command,
 	call rem
 	mov esi, spot
 	call getop3
-	;//If the user entered a valid run time it is in op3, otherwide op3 is null/0
-	mov al, op3
-	cmp al, 0
-	je defaulttime
-	;//If we get here, they entered a number, so step N ammount of time
-	;//The number is in op3
 
-	;//If the user didnt enter anything, just steep 1 time:
-	defaulttime:
-	mov op3,1
+	; - if none was given, 1 is provided instead. 
+	mov cl, al
+	mov al, steppriority
+	cmp cl, 0
+	jle default
+	mov stepplace, cl
+	jmp LINIT
 
-	;//_____________________________________________
-	;//NEEDS TO BE IMPLEMENTED
-	;//______________________________________
+
+	default:
+		mov cl, 1
+		mov stepplace, cl
+		jmp LINIT
+	
+	LINIT:
+		mov findnextplace, 10
+		mov esi, offset jobs
+		call stepfindpriority
+		mov al, steppriority
+		cmp al, 8
+		je LTE
+		jmp L1
+	L1:
+		call stepfindnext
+		jmp LC1
+	LC1:
+		; Checks to see if the job record has expired,
+		; - if so, the record is killed.
+		cmp cl, -2
+		je LTK
+		cmp cl, -1
+		je LC2
+		jmp LC3
+
+
+	LC2:
+		add esi, 14
+		mov cl, stepplace
+		dec cl
+		cmp cl, 0
+		jle done
+		mov stepplace, cl
+
+		mov cl, findnextplace
+		dec cl
+		cmp cl, 0
+		jle LINIT
+		mov findnextplace, cl
+		jmp L1
+
+
+	LC3:
+		add esi, 14
+		mov cl, findnextplace
+		dec cl
+		cmp cl, 0
+		jle LINIT
+		mov findnextplace, cl
+		jmp L1
+	
+	LTK:
+
+		cld
+		mov edi, esi
+		mov esi, offset empty
+		mov ecx, 14
+		rep movsb
+
+		mov ch, totjobs
+		dec ch
+		mov totjobs, ch
+
+		; decrements, then compares [ecx] to 0,
+		; - if [ecx] is 0 or below, the procedure terminates.
+		mov cl, stepplace
+		dec cl
+		cmp cl, 0
+		jle done
+		mov stepplace, cl
+
+		jmp LINIT
+		
+	LTE:
+		mov edx, offset str_confirm_empty
+		call writeString
+		jmp done
+
+	LTWE:
+		mov edx, offset str_error_stepempty
+		call writeString
+		jmp done
+
 	done:
-	ret
+		pop edi
+		pop esi
+		pop eax
+		pop ecx
+		ret
 step ENDP
 
 
 
+; STEPFINDPRIORITY
+; DESCRIPTION:    Iterates through <jobs> in order to retrieve the lowest priority.
+; PRECONDITIONS:  N/A (sets it's own registers)
+; POSTCONDITIONS: Updates the global label <steppriority>*
+; *sends the error code 8 whenever no running job entries exist.
+stepfindpriority proc
+	push esi
+	push ecx
+	mov esi, offset jobs
+	mov steppriority, 8
+	mov cl, 10
+	cmp cl, 0
+	jle done
+	jmp L1
+
+	L1:
+		mov al, byte ptr [esi + 10]
+		cmp al, 0
+		je LC
+
+		cmp al, jobrun
+		jne LC
+
+		mov al, byte ptr [esi + 9]
+		cmp al, steppriority
+		jge LC
+		mov steppriority, al
+		jmp LC
+
+	LC:
+		add esi, 14
+		dec cl
+		cmp cl, 0
+		jle done
+		jmp L1
+		
+	done:
+		pop ecx
+		pop esi
+		ret
+stepfindpriority endp
+
+
+
+; STEPFINDNEXT
+; DESCRIPTION:    Iterates through <jobs>, trying to find running records with <steppriority> priority.
+; PRECONDITIONS:  [esi] points to a valid job record.
+; POSTCONDITIONS: decrements a job record's runtime if it meets the criteria above*
+; *sends the codes '-2' (job should be killed), and '-1' (job was decremented).
+stepfindnext PROC
+	mov al, [esi + 10]
+	cmp al, jobrun
+	je good
+	jmp done
+
+	good:
+		mov al, [esi + 9]
+		cmp al, steppriority
+		jne done
+
+		mov al, [esi + 11]
+		dec al
+		cmp al, 0
+		jle markaskill
+		mov [esi + 11], al
+		mov cl, -1
+		jmp done
+
+
+	markaskill:
+		mov cl, -2
+		jmp done
+
+	done:
+		ret
+stepfindnext ENDP
+
+
+; HELP
+; DESCRIPTION:    Prints a list of strings that construct a mini-readme onto the screen.
+; PRECONDITIONS:  N/A.
+; POSTCONDITIONS: Leaves a list of all available commands on the screen.
 help PROC
+	mov edx,offset str_line
+	call writestring
 	mov edx,offset str_prompt_help1
+	call writestring
+	mov edx,offset str_line
 	call writestring
 	mov edx,offset str_prompt_help2
 	call writestring
-	mov edx,offset str_prompt_help3
+	mov edx,offset str_line
+	call writestring
+	mov edx,offset str_prompt_help3_1
+	call writestring
+	mov edx,offset str_prompt_help3_2
+	call writestring
+	mov edx,offset str_line
+	call writestring
+	mov edx,offset str_prompt_help4
 	call writestring
 	ret
 help ENDP
 
 
-
+; CHANGE
+; DESCRIPTION:    Runs various subroutines to change the priority of a given job record,
+; PRECONDITIONS:  N/A (should be called by COMPARE).
+; POSTCONDITIONS: Attempts to change a job record's priority, if <op1> contains a valid job name.
+; + this procedure prompts for missing input.
 change PROC
 	call skipchars
 	call rem
@@ -582,8 +814,7 @@ change PROC
 		ja done
 
 	cont:
-		;//Now just get the new priority, check it, and place it
-		;//jobnamepos is pointing to the start of the record
+
 		mov esi, jobnamepos
 		add esi, 9
 		movzx eax, op2
@@ -595,7 +826,11 @@ change PROC
 change ENDP
 
 
-
+; KILL
+; DESCRIPTION:    Clears a named record from <jobs>, should it exist.
+; PRECONDITIONS:  N/A, (should be called by COMPARE)
+; POSTCONDITIONS: Erases a record that <op1>'s input matches, should it exist.
+; + this procedure prompts for missing input.
 kill PROC
 	call skipchars
 	call rem
@@ -640,6 +875,7 @@ kill PROC
 		mov esi, offset empty
 		mov ecx, 14
 		rep movsb
+		dec totjobs
 		jmp done
 
 	bad:
@@ -650,7 +886,11 @@ kill PROC
 kill ENDP
 
 
-
+; HOLD
+; DESCRIPTION:    Changes the status of a valid job record to HOLD,
+; PRECONDITIONS:  N/A (should be called by COMPARE).
+; POSTCONDITIONS: Attempts to change a job record's status to HOLD, if possible.
+; + this procedure prompts for missing input.
 hold PROC
 	call skipchars
 	call rem
@@ -693,6 +933,12 @@ hold PROC
 hold ENDP
 
 
+
+; RUN
+; DESCRIPTION:    Changes the status of a valid job record to RUN,
+; PRECONDITIONS:  N/A (should be called by COMPARE).
+; POSTCONDITIONS: Attempts to change a job record's status to RUN, if possible.
+; + this procedure prompts for missing input.
 run PROC
 	call skipchars
 	call rem
@@ -735,6 +981,11 @@ run ENDP
 
 
 
+; FINDJOB
+; DESCRIPTION:    Attempts to search <jobs> for a record, which matches <op1>,
+; PRECONDITIONS:  <op1> must contain string data.
+; POSTCONDITIONS: Attempts to match <op1> to a job record*
+; *stores relevant values in jobnamepos, if found.
 findjob PROC
 	mov jobnamenum, 10
 	mov jobnamepos, offset jobs
@@ -762,13 +1013,16 @@ findjob ENDP
 
 
 
+; LOAD
+; DESCRIPTION:    Attempts to create a new job record, using all <...op...> labels,
+; PRECONDITIONS:  N/A (should be called by COMPARE),
+; POSTCONDITIONS: Creates a new job record (if space is available in <jobs>).
+; + this procedure prompts for missing input.
 load PROC
-	cld
-	mov esi, curjob
-	mov edi, jobsfull
-	mov ecx, 2
-	repe cmpsd
-	je full
+	push ecx
+	mov cl, totjobs
+	cmp totjobs, 10
+	jge full
 
 	call skipchars
 	call rem
@@ -776,14 +1030,11 @@ load PROC
 	call skipchars
 	call rem
 	call getop2
-	
-	;//Compare the priority here
+
 	call skipchars
 	call rem
 	call getop3
 	
-	;//Compare the run time here
-	;//Compare the name here
 	mov al, namelen
 	cmp al, 0
 	je nameprompt
@@ -841,24 +1092,20 @@ load PROC
 		jbe done
 
 	cont3:
+		call loadfindempty
 		inc totjobs
 		cld
+		mov edi, curjob
 		mov esi, offset op1
-		mov edi, curjob
-		mov ecx, 8
+		mov cl,  8
 		rep movsb
+
 		mov edi, curjob
-		add edi, 9
 		movzx eax, op2
-		mov byte ptr[edi], al
-		mov edi, curjob
-		add edi, 10
-		mov byte ptr[edi], 2
-		mov edi, curjob
-		add edi, 11
+		mov byte ptr[edi + 9], al
+		mov byte ptr[edi + 10], 2
 		movzx eax, op3
-		mov byte ptr[edi], al
-		add curjob, 14
+		mov byte ptr[edi + 11], al
 		jmp done
 	
 	full:
@@ -866,11 +1113,51 @@ load PROC
 		call writestring
 
 	done:
+		pop ecx
 		ret
 load ENDP
 
 
+; LOADFINDEMPTY
+; DESCRIPTION:    Fetches the next empty record in <jobs> for LOAD,
+; PRECONDITIONS:  <jobs> must not be full.
+; POSTCONDITIONS: Changes <curjob> to a new, empty record.
+loadfindempty proc
+	push esi
+	push eax
+	mov esi, offset jobs
+	mov ah, 10
+	jmp L1
+		
+	L1:
+		mov al, byte ptr [esi + 10]
+		cmp al, 0
+		je found
+		jmp LC
+	
+	LC:
+		dec ah
+		cmp ah, 0
+		jle done
+		add esi, 14
+		jmp L1
+	
+	found:
+		mov curjob, esi
+		jmp done
 
+	done:
+		pop eax
+		pop esi
+		ret
+loadfindempty endp
+
+
+
+; DUPNAME
+; DESCRIPTION:    Validates <op1> against <jobs>, to ensure it is unique.
+; PRECONDITIONS:  N/A (should be called by COMPARE).
+; POSTCONDITIONS: Prematurely terminates if it finds a duplicate name. Otherwise, returns as normal.
 dupname PROC
 	mov currentpostemp, offset jobs
 	mov edi, currentpostemp
@@ -898,6 +1185,11 @@ dupname PROC
 dupname ENDP
 
 
+
+; GETNEWRUN
+; DESCRIPTION:    Fetches a new copy of <op1> for RUN,
+; PRECONDITIONS:  N/A (should be called by RUN),
+; POSTCONDITIONS: Alters <op1> to contain new user input.
 getnewrun PROC
 	mov edx, offset str_prompt_run
 	call writestring
@@ -910,7 +1202,10 @@ getnewrun PROC
 getnewrun ENDP
 
 
-
+; GETNEWPRI
+; DESCRIPTION:    Fetches a new copy of <op2> for LOAD, CHANGE,
+; PRECONDITIONS:  N/A (should be called by LOAD or CHANGE),
+; POSTCONDITIONS: Alters <op2> to contain new user input.
 getnewpri PROC
 	mov edx, offset str_prompt_pri
 	call writestring
@@ -923,7 +1218,10 @@ getnewpri PROC
 getnewpri ENDP
 
 
-
+; GETNEWNAME
+; DESCRIPTION:    Fetches a new copy of <op1> for CHANGE, HOLD, KILL, RUN, LOAD,
+; PRECONDITIONS:  N/A (should be called by CHANGE, HOLD, KILL, RUN, and LOAD),
+; POSTCONDITIONS: Alters <op1> to contain new user input.
 getnewname PROC
 	mov edx, offset str_prompt_name
 	call writestring
@@ -936,7 +1234,10 @@ getnewname PROC
 getnewname ENDP
 
 
-
+; SHOWJOBS
+; DESCRIPTION:    Shows any job(s) that are currently loaded,
+; PRECONDITIONS:  N/A (handles empty <jobs>),
+; POSTCONDITIONS: Prints each job record to the screen, with a screen break included.
 showjobs PROC
 	mov pausecount,0
 	mov ecx, 10
@@ -981,9 +1282,11 @@ showjobs ENDP
 
 
 
+; SHOWLT
+; DESCRIPTION:    Serves as a break routine for SHOWJOBS,
+; PRECONDITIONS:  N/A (should be called by SHOWJOBS),
+; POSTCONDITIONS: Conditonally adds an extra line to cmd output.
 showlt PROC
-	mov edx, offset showloadtime
-	call writestring
 	mov al, pausecount
 	cmp al, 30
 	je cont
@@ -995,31 +1298,33 @@ showlt PROC
 showlt ENDP
 
 
-
-maybewait PROC
-	ret
-maybewait ENDP
-
-
-
+; PRINTNAMENEAT
+; DESCRIPTION:    Fetches, then prints a job record's associated name.
+; PRECONDITIONS:  N/A (should be called by SHOWJOBS)
+; POSTCONDITIONS: Conditionally calls WAITMSG, but otherwise prints valid job names.
 printnameneat PROC
 	add pausecount,6
 	mov al,pausecount
 	cmp al,36
 	jne cont
+	call crlf
 	call waitmsg
 	call crlf
-	cont:
-	mov edx, offset showname
-	call writestring
-	mov edx, priposition
-	call writestring
 	call crlf
-	ret
+	cont:
+		mov edx, offset showname
+		call writestring
+		mov edx, priposition
+		call writestring
+		call crlf
+		ret
 printnameneat ENDP
 	
 
-
+; DISPPRI
+; DESCRIPTION:    Transforms status values into readable text.
+; PRECONDITIONS:  N/A (should be called by SHOW JOBS),
+; POSTCONDITIONS: Prints the status of a job record.
 disppri PROC
 	push esi
 	mov esi, priposition
@@ -1043,7 +1348,10 @@ disppri PROC
 disppri ENDP
 
 
-
+; INITSTUFF
+; DESCRIPTION:    Resets various constant values and accumulators.
+; PRECONDITIONS:  N/A (only zeroes data).
+; POSTCONDITIONS: Resets constant values used by procedures defined above.
 initstuff PROC
 	mov namelen, 0
 	cld
