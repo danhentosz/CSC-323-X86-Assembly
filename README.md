@@ -1,7 +1,7 @@
 # Multitasking Operating System Simulator
 
 
-**Daniel Hentosz, Scott Trunzo || GROUP 10**
+**Daniel Hentosz, Scott Trunzo, Josh Staffen GROUP 10 || hen3883@calu.edu, tru1931@calu.edu, sta9036@calu.edu.**
 
 **hen3883@calu.edu, tru1931@calu.edu**
 
