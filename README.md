@@ -1,9 +1,9 @@
 # Multitasking Operating System Simulator
 
 
-**Daniel Hentosz, Scott Trunzo, Josh Staffen GROUP 10 || hen3883@calu.edu, tru1931@calu.edu, sta9036@calu.edu.**
+**Daniel Hentosz, Scott Trunzo, Josh Staffen || GROUP 10**
 
-**hen3883@calu.edu, tru1931@calu.edu**
+**hen3883@calu.edu, tru1931@calu.edu, sta9036@calu.edu**
 
   * __Accepts:__ *QUIT HELP LOAD RUN HOLD KILL SHOW STEP CHANGE*.
   * __10 jobs at a time__.
